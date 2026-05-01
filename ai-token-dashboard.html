@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Token Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --card: #16161f;
+    --border: #1e1e2e;
+    --border-bright: #2a2a40;
+    --text: #e8e8f0;
+    --muted: #6b6b85;
+    --faint: #2a2a3a;
+
+    --claude: #e8855a;
+    --claude-dim: rgba(232,133,90,0.12);
+    --claude-glow: rgba(232,133,90,0.25);
+
+    --gemini: #4ab3f4;
+    --gemini-dim: rgba(74,179,244,0.12);
+    --gemini-glow: rgba(74,179,244,0.25);
+
+    --gpt: #10a37f;
+    --gpt-dim: rgba(16,163,127,0.12);
+    --gpt-glow: rgba(16,163,127,0.25);
+
+    --warn: #f0c040;
+    --danger: #e85a6a;
+    --success: #5ae8a0;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Subtle grid texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--faint) 1px, transparent 1px),
+      linear-gradient(90deg, var(--faint) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .header-left h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(20px, 5vw, 28px);
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+  .header-left h1 span { color: var(--muted); font-weight: 400; }
+  .header-left p {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: 0.04em;
+  }
+  .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .live-badge {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 10px; letter-spacing: 0.1em; color: var(--success);
+    text-transform: uppercase;
+  }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+  .last-update { font-size: 10px; color: var(--muted); }
+
+  /* DATE SELECTOR */
+  .date-bar {
+    display: flex; gap: 8px; align-items: center; margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .date-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+  .date-btn {
+    background: var(--card); border: 1px solid var(--border); color: var(--muted);
+    font-family: 'DM Mono', monospace; font-size: 11px; padding: 5px 12px; border-radius: 4px;
+    cursor: pointer; transition: all .15s;
+  }
+  .date-btn:hover, .date-btn.active { border-color: var(--border-bright); color: var(--text); background: var(--border); }
+  .date-btn.active { color: var(--text); }
+
+  /* SUMMARY ROW */
+  .summary-row {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 24px;
+  }
+  @media(max-width:480px){ .summary-row { grid-template-columns: repeat(3,1fr); gap: 6px; } }
+  .sum-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .sum-card .sum-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 6px; }
+  .sum-card .sum-val { font-family: 'Syne', sans-serif; font-size: clamp(16px,4vw,22px); font-weight: 700; }
+  .sum-card .sum-sub { font-size: 9px; color: var(--muted); margin-top: 3px; }
+
+  /* MAIN CARDS */
+  .cards { display: flex; flex-direction: column; gap: 14px; margin-bottom: 28px; }
+
+  .ai-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s;
+    animation: fadeUp .4s ease both;
+  }
+  .ai-card:nth-child(1){animation-delay:.05s}
+  .ai-card:nth-child(2){animation-delay:.1s}
+  .ai-card:nth-child(3){animation-delay:.15s}
+  @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+  .ai-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    opacity: 0; transition: opacity .2s;
+  }
+  .ai-card:hover { border-color: var(--border-bright); }
+  .ai-card:hover::before { opacity: 1; }
+  .ai-card.claude::before { background: var(--claude); }
+  .ai-card.gemini::before { background: var(--gemini); }
+  .ai-card.gpt::before { background: var(--gpt); }
+
+  /* Glow accent blob */
+  .ai-card .glow {
+    position: absolute; right: -30px; top: -30px; width: 120px; height: 120px;
+    border-radius: 50%; filter: blur(40px); opacity: 0.2; pointer-events: none;
+  }
+  .claude .glow { background: var(--claude); }
+  .gemini .glow { background: var(--gemini); }
+  .gpt .glow { background: var(--gpt); }
+
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .card-title { display: flex; align-items: center; gap: 10px; }
+  .ai-icon {
+    width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center;
+    justify-content: center; font-size: 15px; flex-shrink: 0;
+  }
+  .claude .ai-icon { background: var(--claude-dim); }
+  .gemini .ai-icon { background: var(--gemini-dim); }
+  .gpt .ai-icon { background: var(--gpt-dim); }
+  .ai-name { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+  .ai-model { font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+  .card-meta { text-align: right; }
+  .balance-amt { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; }
+  .balance-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-top: 2px; }
+
+  /* Progress bar */
+  .prog-wrap { margin-bottom: 14px; }
+  .prog-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-bottom: 6px; }
+  .prog-track {
+    height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; position: relative;
+  }
+  .prog-fill {
+    height: 100%; border-radius: 3px; transition: width .6s cubic-bezier(.4,0,.2,1);
+    position: relative;
+  }
+  .prog-fill::after {
+    content: ''; position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+    width: 8px; height: 8px; border-radius: 50%; background: inherit;
+    box-shadow: 0 0 8px currentColor;
+  }
+  .claude .prog-fill { background: var(--claude); }
+  .gemini .prog-fill { background: var(--gemini); }
+  .gpt .prog-fill { background: var(--gpt); }
+
+  /* Stats row */
+  .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+  @media(max-width:400px){ .stats-row { grid-template-columns: repeat(2,1fr); } }
+  .stat-box {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 10px;
+  }
+  .stat-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 4px; }
+  .stat-val { font-size: 13px; font-weight: 500; }
+
+  /* Projection badge */
+  .proj-row { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 8px; }
+  .proj-item { display: flex; align-items: center; gap: 6px; }
+  .proj-lbl { font-size: 10px; color: var(--muted); }
+  .proj-val { font-size: 12px; font-weight: 500; }
+  .proj-days { font-family: 'Syne', sans-serif; font-size: 11px; }
+  .days-ok { color: var(--success); }
+  .days-warn { color: var(--warn); }
+  .days-danger { color: var(--danger); }
+
+  /* CHART SECTION */
+  .section-title {
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted);
+    margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .chart-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 20px; margin-bottom: 14px;
+  }
+  .chart-card h3 { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; margin-bottom: 16px; }
+
+  .bar-chart { display: flex; flex-direction: column; gap: 10px; }
+  .bar-row { display: grid; grid-template-columns: 80px 1fr 60px; gap: 10px; align-items: center; }
+  @media(max-width:400px){ .bar-row { grid-template-columns: 60px 1fr 50px; } }
+  .bar-label { font-size: 11px; color: var(--muted); text-align: right; }
+  .bar-track { height: 20px; background: var(--surface); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 10px; font-weight: 500; color: rgba(255,255,255,0.8); transition: width .7s cubic-bezier(.4,0,.2,1); min-width: 28px; }
+  .bar-num { font-size: 11px; color: var(--muted); text-align: right; }
+
+  /* ADD USAGE FORM */
+  .add-section { margin-top: 8px; }
+  .form-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  @media(max-width:480px){ .form-grid { grid-template-columns: 1fr; } }
+  .field label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); display: block; margin-bottom: 5px; }
+  .field select, .field input {
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px;
+    padding: 8px 10px; border-radius: 6px; outline: none; transition: border-color .15s;
+    -webkit-appearance: none;
+  }
+  .field select:focus, .field input:focus { border-color: var(--border-bright); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  @media(max-width:480px){ .form-row { grid-template-columns: 1fr 1fr; } }
+  .btn-primary {
+    background: var(--text); color: var(--bg); border: none; border-radius: 6px;
+    font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
+    padding: 10px 20px; cursor: pointer; width: 100%; letter-spacing: 0.05em;
+    text-transform: uppercase; transition: opacity .15s;
+  }
+  .btn-primary:hover { opacity: 0.85; }
+
+  /* HISTORY */
+  .history-list { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; }
+  .history-list::-webkit-scrollbar { width: 3px; }
+  .history-list::-webkit-scrollbar-track { background: var(--surface); }
+  .history-list::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+  .hist-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 12px; gap: 8px; font-size: 11px;
+  }
+  .hist-row .h-name { font-weight: 500; display: flex; align-items: center; gap: 6px; }
+  .hist-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .hist-row .h-date { color: var(--muted); font-size: 10px; }
+  .hist-row .h-tokens { color: var(--text); }
+  .hist-row .h-cost { color: var(--muted); }
+  .hist-row .h-del {
+    background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1;
+    padding: 0 2px; transition: color .15s;
+  }
+  .hist-row .h-del:hover { color: var(--danger); }
+
+  .empty-state { text-align: center; padding: 24px; color: var(--muted); font-size: 12px; }
+
+  /* FOOTER */
+  footer {
+    text-align: center; font-size: 10px; color: var(--muted); margin-top: 40px;
+    padding-top: 16px; border-top: 1px solid var(--border); letter-spacing: 0.06em;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px);
+    background: var(--text); color: var(--bg); padding: 10px 20px; border-radius: 6px;
+    font-size: 12px; font-family: 'Syne', sans-serif; font-weight: 600;
+    transition: transform .3s; z-index: 1000; pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-left">
+      <h1>TOKEN <span>/</span> LEDGER</h1>
+      <p>AI API Usage &amp; Balance Tracker</p>
+    </div>
+    <div class="header-right">
+      <div class="live-badge"><div class="live-dot"></div> Live</div>
+      <div class="last-update" id="lastUpdate">—</div>
+    </div>
+  </header>
+
+  <!-- DATE FILTER -->
+  <div class="date-bar">
+    <span class="date-label">View</span>
+    <button class="date-btn active" onclick="setView('today',this)">Today</button>
+    <button class="date-btn" onclick="setView('7d',this)">7 Days</button>
+    <button class="date-btn" onclick="setView('30d',this)">30 Days</button>
+    <button class="date-btn" onclick="setView('all',this)">All</button>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="summary-row">
+    <div class="sum-card">
+      <div class="sum-label">Total Spend</div>
+      <div class="sum-val" id="sumSpend">$0.00</div>
+      <div class="sum-sub" id="sumSpendSub">all providers</div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-label">Total Tokens</div>
+      <div class="sum-val" id="sumTokens">0</div>
+      <div class="sum-sub" id="sumTokensSub">across APIs</div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-label">Balance Left</div>
+      <div class="sum-val" id="sumBalance">$0.00</div>
+      <div class="sum-sub">combined</div>
+    </div>
+  </div>
+
+  <!-- AI PROVIDER CARDS -->
+  <div class="section-title">Provider Breakdown</div>
+  <div class="cards" id="providerCards"></div>
+
+  <!-- TOKEN USAGE CHART -->
+  <div class="section-title">Daily Spend Breakdown</div>
+  <div class="chart-card">
+    <h3>Cost by Provider ($)</h3>
+    <div class="bar-chart" id="spendChart"></div>
+  </div>
+
+  <!-- ADD USAGE -->
+  <div class="section-title">Log Usage</div>
+  <div class="form-card add-section">
+    <div class="form-grid">
+      <div class="field">
+        <label>Provider</label>
+        <select id="fProvider">
+          <option value="claude">Claude (Anthropic)</option>
+          <option value="gemini">Gemini (Google)</option>
+          <option value="gpt">ChatGPT (OpenAI)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="fDate">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label>Input Tokens</label>
+        <input type="number" id="fInput" placeholder="0" min="0">
+      </div>
+      <div class="field">
+        <label>Output Tokens</label>
+        <input type="number" id="fOutput" placeholder="0" min="0">
+      </div>
+      <div class="field">
+        <label>Cost ($)</label>
+        <input type="number" id="fCost" placeholder="0.00" step="0.001" min="0">
+      </div>
+    </div>
+    <button class="btn-primary" onclick="addEntry()">+ Log Entry</button>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="section-title" style="margin-top:24px;">History</div>
+  <div class="chart-card">
+    <div class="history-list" id="historyList">
+      <div class="empty-state">No entries yet. Log your first usage above.</div>
+    </div>
+  </div>
+
+  <footer>TOKEN LEDGER · built for Aman · data stored locally</footer>
+</div>
+
+<div class="toast" id="toast">Entry added</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────
+const PROVIDERS = {
+  claude: {
+    name: 'Claude', model: 'Anthropic API', icon: '◆', color: '#e8855a',
+    dim: 'rgba(232,133,90,0.12)', balance: 20.00,
+    rate: { input: 0.000003, output: 0.000015 } // $ per token
+  },
+  gemini: {
+    name: 'Gemini', model: 'Google AI Studio', icon: '✦', color: '#4ab3f4',
+    dim: 'rgba(74,179,244,0.12)', balance: 15.00,
+    rate: { input: 0.0000025, output: 0.000010 }
+  },
+  gpt: {
+    name: 'ChatGPT', model: 'OpenAI API', icon: '⬡', color: '#10a37f',
+    dim: 'rgba(16,163,127,0.12)', balance: 25.00,
+    rate: { input: 0.000005, output: 0.000015 }
+  }
+};
+
+let currentView = 'today';
+
+// ─── STORAGE ──────────────────────────────────────────────
+function load() {
+  try { return JSON.parse(localStorage.getItem('tokenLedger') || '{"entries":[],"balances":{}}'); }
+  catch { return { entries: [], balances: {} }; }
+}
+function save(data) { localStorage.setItem('tokenLedger', JSON.stringify(data)); }
+
+// ─── DATE HELPERS ─────────────────────────────────────────
+function todayStr() { return new Date().toISOString().slice(0,10); }
+function daysAgo(n) {
+  const d = new Date(); d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0,10);
+}
+function filterByView(entries) {
+  if (currentView === 'all') return entries;
+  const today = todayStr();
+  if (currentView === 'today') return entries.filter(e => e.date === today);
+  if (currentView === '7d') return entries.filter(e => e.date >= daysAgo(7));
+  if (currentView === '30d') return entries.filter(e => e.date >= daysAgo(30));
+  return entries;
+}
+
+// ─── PROJECTION ───────────────────────────────────────────
+function projectDaysLeft(providerId, balance, entries) {
+  const yesterday = daysAgo(1);
+  const yEntries = entries.filter(e => e.provider === providerId && e.date === yesterday);
+  const yCost = yEntries.reduce((s,e) => s + (e.cost||0), 0);
+  if (yCost <= 0) {
+    // fall back to last 7 days avg
+    const w7 = entries.filter(e => e.provider === providerId && e.date >= daysAgo(7));
+    const wCost = w7.reduce((s,e) => s + (e.cost||0), 0);
+    const avg = wCost / 7;
+    if (avg <= 0) return null;
+    return { days: Math.floor(balance / avg), basis: '7d avg', daily: avg };
+  }
+  return { days: Math.floor(balance / yCost), basis: 'yesterday', daily: yCost };
+}
+
+// ─── RENDER CARDS ─────────────────────────────────────────
+function renderCards() {
+  const data = load();
+  const filtered = filterByView(data.entries);
+  const container = document.getElementById('providerCards');
+  container.innerHTML = '';
+
+  let totalBalance = 0;
+  let totalSpend = 0;
+  let totalTokens = 0;
+
+  const providerStats = {};
+
+  Object.keys(PROVIDERS).forEach(pid => {
+    const p = PROVIDERS[pid];
+    const savedBalance = data.balances[pid];
+    const balance = savedBalance !== undefined ? savedBalance : p.balance;
+
+    const pEntries = filtered.filter(e => e.provider === pid);
+    const spend = pEntries.reduce((s,e) => s + (e.cost||0), 0);
+    const inputTok = pEntries.reduce((s,e) => s + (e.inputTokens||0), 0);
+    const outputTok = pEntries.reduce((s,e) => s + (e.outputTokens||0), 0);
+    const totalTok = inputTok + outputTok;
+
+    totalBalance += balance;
+    totalSpend += spend;
+    totalTokens += totalTok;
+
+    providerStats[pid] = { spend, inputTok, outputTok, totalTok, balance };
+
+    const proj = projectDaysLeft(pid, balance, data.entries);
+    const usedPct = Math.min(100, (spend / (balance + spend)) * 100);
+    const balPct = Math.max(0, 100 - usedPct);
+
+    const daysClass = proj
+      ? (proj.days > 14 ? 'days-ok' : proj.days > 5 ? 'days-warn' : 'days-danger')
+      : 'days-ok';
+
+    const card = document.createElement('div');
+    card.className = `ai-card ${pid}`;
+    card.innerHTML = `
+      <div class="glow"></div>
+      <div class="card-header">
+        <div class="card-title">
+          <div class="ai-icon" style="color:${p.color}">${p.icon}</div>
+          <div>
+            <div class="ai-name">${p.name}</div>
+            <div class="ai-model">${p.model}</div>
+          </div>
+        </div>
+        <div class="card-meta">
+          <div class="balance-amt" style="color:${p.color}">$${balance.toFixed(2)}</div>
+          <div class="balance-label">balance left</div>
+        </div>
+      </div>
+      <div class="prog-wrap">
+        <div class="prog-labels">
+          <span>$${spend.toFixed(3)} used</span>
+          <span>${balPct.toFixed(0)}% remaining</span>
+        </div>
+        <div class="prog-track">
+          <div class="prog-fill" style="width:${usedPct}%"></div>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-lbl">Input Tok</div>
+          <div class="stat-val">${fmtNum(inputTok)}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-lbl">Output Tok</div>
+          <div class="stat-val">${fmtNum(outputTok)}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-lbl">Total Tok</div>
+          <div class="stat-val">${fmtNum(totalTok)}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-lbl">Spend</div>
+          <div class="stat-val">$${spend.toFixed(3)}</div>
+        </div>
+      </div>
+      <div class="proj-row">
+        <div class="proj-item">
+          <span class="proj-lbl">Projection basis:</span>
+          <span class="proj-val">${proj ? proj.basis : 'no data'}</span>
+        </div>
+        <div class="proj-item">
+          <span class="proj-lbl">Daily burn:</span>
+          <span class="proj-val">${proj ? '$'+proj.daily.toFixed(3) : '—'}</span>
+        </div>
+        <div class="proj-item">
+          <span class="proj-lbl">Days left:</span>
+          <span class="proj-days ${daysClass}">${proj ? proj.days + 'd' : '∞'}</span>
+        </div>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+
+  // Summary
+  document.getElementById('sumSpend').textContent = '$' + totalSpend.toFixed(3);
+  document.getElementById('sumTokens').textContent = fmtNum(totalTokens);
+  document.getElementById('sumBalance').textContent = '$' + totalBalance.toFixed(2);
+
+  // Bar chart
+  renderBarChart(providerStats);
+  renderHistory(data.entries);
+
+  document.getElementById('lastUpdate').textContent = 'Updated ' + new Date().toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'});
+}
+
+function renderBarChart(stats) {
+  const chart = document.getElementById('spendChart');
+  chart.innerHTML = '';
+  const maxSpend = Math.max(...Object.values(stats).map(s => s.spend), 0.001);
+
+  Object.entries(PROVIDERS).forEach(([pid, p]) => {
+    const s = stats[pid];
+    const pct = (s.spend / maxSpend) * 100;
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML = `
+      <div class="bar-label">${p.name}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="background:${p.color};width:${pct}%">
+          ${pct > 20 ? '$' + s.spend.toFixed(3) : ''}
+        </div>
+      </div>
+      <div class="bar-num">$${s.spend.toFixed(3)}</div>
+    `;
+    chart.appendChild(row);
+  });
+}
+
+function renderHistory(entries) {
+  const list = document.getElementById('historyList');
+  if (!entries.length) {
+    list.innerHTML = '<div class="empty-state">No entries yet. Log your first usage above.</div>';
+    return;
+  }
+  const sorted = [...entries].sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id);
+  list.innerHTML = sorted.map(e => {
+    const p = PROVIDERS[e.provider];
+    return `<div class="hist-row">
+      <div class="h-name">
+        <div class="hist-dot" style="background:${p.color}"></div>
+        ${p.name}
+      </div>
+      <div class="h-date">${e.date}</div>
+      <div class="h-tokens">${fmtNum((e.inputTokens||0)+(e.outputTokens||0))} tok</div>
+      <div class="h-cost">$${(e.cost||0).toFixed(4)}</div>
+      <button class="h-del" onclick="deleteEntry(${e.id})" title="Delete">×</button>
+    </div>`;
+  }).join('');
+}
+
+// ─── ACTIONS ──────────────────────────────────────────────
+function addEntry() {
+  const provider = document.getElementById('fProvider').value;
+  const date = document.getElementById('fDate').value || todayStr();
+  const inputTokens = parseInt(document.getElementById('fInput').value) || 0;
+  const outputTokens = parseInt(document.getElementById('fOutput').value) || 0;
+  const costField = parseFloat(document.getElementById('fCost').value);
+
+  const p = PROVIDERS[provider];
+  const cost = isNaN(costField) || costField === 0
+    ? (inputTokens * p.rate.input + outputTokens * p.rate.output)
+    : costField;
+
+  const data = load();
+  const id = Date.now();
+  data.entries.push({ id, provider, date, inputTokens, outputTokens, cost });
+  save(data);
+
+  document.getElementById('fInput').value = '';
+  document.getElementById('fOutput').value = '';
+  document.getElementById('fCost').value = '';
+
+  showToast('Entry logged ✓');
+  renderCards();
+}
+
+function deleteEntry(id) {
+  const data = load();
+  data.entries = data.entries.filter(e => e.id !== id);
+  save(data);
+  renderCards();
+}
+
+function setView(v, btn) {
+  currentView = v;
+  document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCards();
+}
+
+// ─── UTILS ────────────────────────────────────────────────
+function fmtNum(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(1)+'M';
+  if (n >= 1000) return (n/1000).toFixed(1)+'K';
+  return n.toString();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ─── INIT ─────────────────────────────────────────────────
+document.getElementById('fDate').value = todayStr();
+
+// Seed demo data if empty
+const initData = load();
+if (!initData.entries.length) {
+  const yesterday = daysAgo(1);
+  const twoDaysAgo = daysAgo(2);
+  initData.entries = [
+    { id: 1, provider: 'claude', date: yesterday, inputTokens: 45000, outputTokens: 12000, cost: 0.315 },
+    { id: 2, provider: 'gemini', date: yesterday, inputTokens: 80000, outputTokens: 20000, cost: 0.4 },
+    { id: 3, provider: 'gpt', date: yesterday, inputTokens: 30000, outputTokens: 8000, cost: 0.27 },
+    { id: 4, provider: 'claude', date: twoDaysAgo, inputTokens: 52000, outputTokens: 14000, cost: 0.366 },
+    { id: 5, provider: 'gpt', date: twoDaysAgo, inputTokens: 22000, outputTokens: 6000, cost: 0.2 },
+  ];
+  save(initData);
+}
+
+renderCards();
+setInterval(renderCards, 60000); // refresh every minute
+</script>
+</body>
+</html>
