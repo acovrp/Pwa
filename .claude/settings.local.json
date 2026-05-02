@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Select-String -Path \"C:\\\\Users\\\\User\\\\Downloads\\\\pwa-push\\\\index.html\" -Pattern \"line:'\" | Select-Object -First 30 | ForEach-Object { $_.LineNumber.ToString\\(\\) + \": \" + $_.Line.Substring\\(0, [Math]::Min\\(200, $_.Line.Length\\)\\) })",
+      "WebFetch(domain:acovrp.github.io)"
+    ]
+  }
+}
