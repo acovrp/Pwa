@@ -1,4 +1,4 @@
-# V Group System Context — Master Navigation Document
+# Aman's agent System Context — Master Navigation Document
 
 This document tells every tool (Python agent, Claude Code, Claude.ai) exactly where everything lives, how it connects, and what each tool can and cannot do. Read this before operating. Never guess paths.
 
