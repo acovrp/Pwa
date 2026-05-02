@@ -260,6 +260,33 @@
   }
   .btn-primary:hover { opacity: 0.85; }
 
+  /* BOOKMARKLET CARD */
+  .bm-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px; margin-bottom: 14px;
+  }
+  .bm-card h3 { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .bm-card .bm-sub { font-size: 11px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
+  .bm-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .bm-link {
+    display: inline-block; background: var(--text); color: var(--bg); padding: 8px 14px;
+    border-radius: 6px; font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700;
+    text-decoration: none; letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .bm-copy {
+    background: var(--surface); border: 1px solid var(--border-bright); color: var(--text);
+    font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 600; padding: 8px 14px;
+    border-radius: 6px; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .bm-code {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px; font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted);
+    word-break: break-all; max-height: 80px; overflow-y: auto; margin-bottom: 12px;
+  }
+  .bm-steps { font-size: 11px; color: var(--text); line-height: 1.7; padding-left: 18px; }
+  .bm-steps li { margin-bottom: 4px; }
+  .bm-steps b { color: var(--claude); font-weight: 600; }
+
   /* RECOMMENDATION BANNER */
   .reco-banner {
     background: linear-gradient(135deg, var(--card), var(--surface));
@@ -395,6 +422,25 @@
       <div class="sum-val" id="sumBalance">$0.00</div>
       <div class="sum-sub">combined</div>
     </div>
+  </div>
+
+  <!-- AUTO-IMPORT BOOKMARKLET -->
+  <div class="section-title">Auto-Import (Bookmarklet)</div>
+  <div class="bm-card">
+    <h3>One-tap usage import</h3>
+    <p class="bm-sub">Tap the bookmarklet while on <b>claude.ai/settings/usage</b> or <b>chatgpt.com</b> — it reads the % values and redirects here with the data filled in.</p>
+    <div class="bm-row">
+      <a class="bm-link" id="bmLink" href="#">⇩ Drag to bookmarks</a>
+      <button class="bm-copy" onclick="copyBookmarklet()">Copy code</button>
+    </div>
+    <div class="bm-code" id="bmCode"></div>
+    <ol class="bm-steps">
+      <li>Tap <b>Copy code</b> above</li>
+      <li>Bookmark any page (e.g. google.com)</li>
+      <li>Edit the bookmark → name it <b>"Sync AI usage"</b> → paste copied code into URL field → save</li>
+      <li>Open <b>claude.ai/settings/usage</b> → tap address bar → type <b>"Sync"</b> → tap the bookmark</li>
+      <li>You'll be redirected here with values filled in. Repeat on chatgpt.com.</li>
+    </ol>
   </div>
 
   <!-- SUBSCRIPTIONS -->
@@ -959,6 +1005,51 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2200);
 }
 
+// ─── URL PARAM AUTO-IMPORT (from bookmarklet) ────────────
+function importFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  if (![...params.keys()].length) return false;
+  const data = load();
+  const providers = ['claude','gemini','gpt'];
+  let importedAny = false;
+  let importedNames = [];
+  providers.forEach(pid => {
+    const sp = params.get(pid + '_session');
+    const sr = params.get(pid + '_session_reset');
+    const wp = params.get(pid + '_weekly');
+    const wr = params.get(pid + '_weekly_reset');
+    if (sp == null && sr == null && wp == null && wr == null) return;
+    const existing = data.subscriptions.find(s => s.provider === pid);
+    const sub = existing || {
+      id: Date.now() + Math.random(),
+      provider: pid,
+      cost: SUB_PLANS[pid].cost,
+      renewal: nextMonth.toISOString().slice(0,10)
+    };
+    if (sp != null) sub.sessionPct = parseFloat(sp);
+    if (sr) sub.sessionReset = toLocalDatetimeInput(sr);
+    if (wp != null) sub.weeklyPct = parseFloat(wp);
+    if (wr) sub.weeklyReset = toLocalDatetimeInput(wr);
+    if (!existing) data.subscriptions.push(sub);
+    importedAny = true;
+    importedNames.push(SUB_PLANS[pid].name);
+  });
+  if (importedAny) {
+    save(data);
+    history.replaceState({}, '', window.location.pathname);
+    setTimeout(() => showToast('Imported: ' + importedNames.join(', ') + ' ✓'), 200);
+  }
+  return importedAny;
+}
+
+function toLocalDatetimeInput(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return iso;
+  const pad = n => String(n).padStart(2,'0');
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) +
+         'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
 // ─── INIT ─────────────────────────────────────────────────
 document.getElementById('fDate').value = todayStr();
 const nextMonth = new Date(); nextMonth.setMonth(nextMonth.getMonth() + 1);
@@ -986,8 +1077,23 @@ if (!initData.entries.length) {
   save(initData);
 }
 
+importFromUrl();
 renderCards();
 setInterval(renderCards, 60000); // refresh every minute
+
+// ─── BOOKMARKLET CODE ────────────────────────────────────
+const BOOKMARKLET_CODE = "javascript:(function(){var t=document.body.innerText;var p=new URLSearchParams();var host=location.hostname;var prov=host.includes('claude.ai')?'claude':(host.includes('chatgpt.com')||host.includes('openai.com'))?'gpt':null;if(!prov){alert('Open this on claude.ai/settings/usage or chatgpt.com first');return;}var sm=t.match(/(?:current\\s*session|5\\s*hour\\s*limit)[\\s\\S]{0,200}?(\\d+)%[\\s\\S]{0,200}?(?:resets?|in)\\s*(?:in\\s*)?(?:(\\d+)\\s*(?:hr|hour|h))?\\s*(?:(\\d+)\\s*(?:min|m))?/i);var wm=t.match(/(?:weekly|7\\s*day)[\\s\\S]{0,300}?(\\d+)%[\\s\\S]{0,200}?resets?\\s+(?:on\\s+)?(\\w+)\\s*(?:at\\s+)?(\\d+)(?::(\\d+))?\\s*(am|pm)/i);if(sm){p.set(prov+'_session',sm[1]);var h=parseInt(sm[2]||'0'),m=parseInt(sm[3]||'0');if(h||m){var r=new Date(Date.now()+(h*3600+m*60)*1000);p.set(prov+'_session_reset',r.toISOString());}}if(wm){p.set(prov+'_weekly',wm[1]);var dm={sun:0,mon:1,tue:2,wed:3,thu:4,fri:5,sat:6};var dn=wm[2].toLowerCase().slice(0,3);var td=dm[dn];if(td!=null){var hr=parseInt(wm[3]),mn=parseInt(wm[4]||'0');if(wm[5].toLowerCase()==='pm'&&hr<12)hr+=12;if(wm[5].toLowerCase()==='am'&&hr===12)hr=0;var d=new Date();var df=(td-d.getDay()+7)%7;if(df===0&&(d.getHours()>hr||(d.getHours()===hr&&d.getMinutes()>=mn)))df=7;d.setDate(d.getDate()+df);d.setHours(hr,mn,0,0);p.set(prov+'_weekly_reset',d.toISOString());}}if(!p.toString()){alert('No usage data found on this page. Make sure you are on the Usage screen.');return;}location.href='https://acovrp.github.io/Pwa/ai-token-dashboard.html?'+p.toString();})();";
+
+function copyBookmarklet() {
+  navigator.clipboard.writeText(BOOKMARKLET_CODE).then(() => {
+    showToast('Bookmarklet copied ✓ Paste into a new bookmark');
+  }).catch(() => {
+    prompt('Copy this code:', BOOKMARKLET_CODE);
+  });
+}
+
+document.getElementById('bmCode').textContent = BOOKMARKLET_CODE;
+document.getElementById('bmLink').href = BOOKMARKLET_CODE;
 </script>
 </body>
 </html>
