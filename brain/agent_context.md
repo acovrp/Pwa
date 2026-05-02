@@ -76,9 +76,9 @@ Rejections: 0
 | Category | Promoted | Notes |
 |---|---|---|
 | dashboard_bug_fixes | ✅ L0 | Edit Marketplace OS HTML/JS/CSS freely. Validate syntax. Log changes. |
-| git_commit_push | ✅ L0 | Known repos only (acovrp/pwa, acovrp/sleepycat-dashboard). No force push. |
+| git_commit_push | ✅ L0 | Known repos only (acovrp/sleepycat-dashboard, acovrp/Pwa). Push brain updates to both remotes (origin + pwa). No force push. |
 | file_management | ✅ L0 | Copy/move/rename for operational tasks. No deletes without asking. |
-| brain_file_updates | ✅ L0 | Update sleepycat_brain.md + agent_context.md. Push to pwa repo. |
+| brain_file_updates | ✅ L0 | Update sleepycat_brain.md + agent_context.md. Verify facts against source data before writing. Push to both remotes. |
 | run_agent | ✅ L0 | Start agent with `python run_agent.py`. Apply known startup fixes. |
 
 When Aman rejects an L1 decision, log the pattern. After 3 rejections of the same type, update your decision model before escalating again.
@@ -125,6 +125,7 @@ When preparing materials for the COO:
 5. **Protect Aman's bandwidth.** Every escalation must be worth his time. If it's L0-able, handle it.
 6. **Learn from rejections.** Log patterns. After 3 similar rejections, update your model.
 7. **Marketplace OS is sacred.** Read file formats before parsing. Validate after every change. Never assume column names.
+8. **Verify before writing to the brain.** A brain entry must be confirmed against actual source data — not derived from reasoning alone. Wrong reasoning written to the brain propagates to every future session. If you can't verify a fact directly, flag it as unverified rather than writing it as fact.
 
 ---
 
