@@ -84,7 +84,7 @@ Aman's single-file HTML command center, built personally and maintained by the a
 - Single HTML file, embedded JS + CSS
 - Data via CSV uploads from Seller Central, Flipkart, Brand Analytics
 - Design system: Kanishk's S&OP light theme
-- 11 upload slots; only `br` (Business Report), `st` (Search Terms), `ba` (Brand Analytics) have active data processors
+- 11 upload slots total; only 3 have active data processors: `br` (Business Report), `st` (Search Terms), `ba` (Brand Analytics). The other 8 (SP campaigns, SB, SD, Flipkart sales, Flipkart ads, Inventory, Returns) accept files but don't yet update any dashboard numbers.
 - Channels: Amazon, Flipkart, Quick Commerce, Other, Search Funnel tab
 
 ### ID Scheme (critical — causes bugs if confused)
@@ -113,9 +113,9 @@ Aman's single-file HTML command center, built personally and maintained by the a
 - KW search debounced 200ms
 
 ### Filter bugs fixed post-v7.2 (May 2026)
-- **Protector dropdown**: `value="mattress"` is correct. `PRODUCTS[mattressprot].line = "mattress"` — the dropdown value must match `p.line`, not `p.id`. Do not change to `"mattressprot"` — that breaks the filter (zero rows returned). Category dropdown `f-cat` also has `value="mattress"` for the Mattress category but feeds a different state variable (`S.cat` vs `S.line`) — not a collision.
-- **Comforter + Bedsheet missing**: `comforte` and `bedshee` product lines existed in PRODUCTS but had no dropdown options — both added.
-- **Size + Thickness filter broken**: `getProds()` only filtered when `p.skus` existed, but no products have `skus` data, so size/thickness filtering was silently skipped for every row. Fixed by adding `PROD_SIZES` and `PROD_THICKNESSES` static lookup tables (keyed by `p.line`) as a fallback branch in `getProds()`. Pillow lines have no entry in `PROD_SIZES` so they are correctly hidden when a bed size is selected.
+- **Protector dropdown**: `value="mattress"` is correct. `PRODUCTS[mattressprot].line = "mattress"` — the dropdown value must match `p.line`, not `p.id`. Do not change to `"mattressprot"` — that breaks the filter (zero rows returned).
+- **Comforter + Bedsheet missing**: `comforte` and `bedshee` product lines added to dropdown.
+- **Size + Thickness filter broken**: Fixed by adding `PROD_SIZES` and `PROD_THICKNESSES` static lookup tables (keyed by `p.line`) as a fallback in `getProds()`.
 
 ### Dashboard editing rules
 - Line 588 is a 42KB minified JSON blob — Read tool fails on ranges including it; use Grep
@@ -123,8 +123,20 @@ Aman's single-file HTML command center, built personally and maintained by the a
 - Funnel data must decrease monotonically at every stage
 - Rate metrics (ACOS, CTR, CVR, TACoS) never summed across products
 - Read column headers from actual file before writing any parser — never assume
-- **Dropdown `value` must match `PRODUCTS[].line`, not `p.id` or the display name.** Before changing any dropdown value, grep `"line":"<value>"` in the PRODUCTS blob to confirm the match. The protector has `p.id="mattressprot"` but `p.line="mattress"` — this has caused two wrong edits already.
+- **Dropdown `value` must match `PRODUCTS[].line`, not `p.id` or the display name.**
 - **Deploy flow**: edit `C:\Users\User\Downloads\pwa-push\index.html` → commit → push to `origin main` on `acovrp/Pwa`. GitHub Pages serves from `main`.
+
+---
+
+## Marketplace OS as a Product (Aman's Strategic Context)
+
+Aman is building the Marketplace OS into a product — an AI-led marketplace management layer that SleepyCat is the first customer of. If it solves SleepyCat's real operational pain, it becomes sellable to other D2C brands on Amazon/Flipkart.
+
+- SleepyCat is client #1. Aman is both the builder and the user.
+- Target buyers: D2C brands doing ₹2–30 Cr/month on marketplaces
+- Sales channel: Aman's existing Amazon/Flipkart POC network
+- This is separate from SleepyCat operations. Do not mix the two.
+- The agent's job is to make SleepyCat operations run well — that is what proves the product works.
 
 ---
 
@@ -190,46 +202,34 @@ Aman's single-file HTML command center, built personally and maintained by the a
 
 ## Risk Map — Where Aman Can Make Costly Mistakes
 
-These are the decision categories where Aman moves fast, operates on instinct, and occasionally gets it wrong. The agent must slow these down, not speed them up.
-
 ### 1. Variation Structure (CRITICAL — irreversible in the short term)
-- World Sleep Day incident: 7 ASINs demerged in one operation. BSR reset, reviews split, organic rank collapsed.
-- Aman knows this risk but underestimates it when under pressure to fix a different issue.
+- World Sleep Day incident: 7 ASINs demerged. BSR reset, reviews split, organic rank collapsed.
 - **Agent rule:** Any variation edit gets a full hold + risk statement before action. No exceptions.
 
 ### 2. Pricing Below Margin Floor
-- Aman will sometimes react to a competitor price drop with "just match it" — without checking if margin survives.
-- Below-floor pricing on Amazon accelerates rank but destroys P&L. Kanishk will ask about it.
-- **Agent rule:** Always calculate and state margin at the proposed price before executing. Flag if below floor.
+- **Agent rule:** Always calculate and state margin at the proposed price before executing.
 
 ### 3. Ad Budget Decisions Without Keyword-Level Data
-- "Increase ad budget by ₹50k" without specifying campaign/keyword = guaranteed ACOS spike.
-- Aman knows this but says it when he's in a meeting and wants a quick answer.
 - **Agent rule:** Never move budget without specifying source, destination, and expected ACOS impact.
 
 ### 4. Flipkart Organic Share (Currently fragile — ~7.7%, down from 40%)
-- Root cause under investigation. Any catalog or pricing change on Flipkart could make it worse.
-- Aman may not always connect a proposed Flipkart change to its organic impact.
 - **Agent rule:** All Flipkart changes get an organic share impact check before execution.
 
 ### 5. Quick Commerce Assortment Changes
-- Margin on QC is thin. Adding the wrong SKU hurts CM2 structurally.
-- Blinkit/Zepto sometimes push for SKUs that don't make margin sense.
-- **Agent rule:** Always run margin math on QC SKU additions. Don't list without Aman seeing the number.
+- **Agent rule:** Always run margin math on QC SKU additions.
 
 ### 6. Reactive Decisions After a Bad Week
-- If sales drop, Aman's instinct is to cut price + increase ad spend simultaneously — which can compound the problem by destroying P&L without fixing the root cause.
-- **Agent rule:** If Aman proposes two or more simultaneous aggressive changes in the same session, flag the compounding risk and ask which lever to pull first.
+- **Agent rule:** If Aman proposes two or more simultaneous aggressive changes, flag the compounding risk and ask which lever to pull first.
 
 ---
 
 ## Aman's Decision Patterns (for calibration)
 
-- Reacts quickly to competitor moves — sometimes too quickly before checking if the competitor is just a weekend sale
-- Trusts his gut on ad allocation more than the data sometimes
-- Can underestimate how fragile variation structures are (World Sleep Day was a hard lesson)
-- Values speed over process when he's under deadline pressure — that's when the agent needs to slow him down most
-- Is genuinely data-first when he has the time — the agent should always give him the data so the decision improves, not worsen under time pressure
+- Reacts quickly to competitor moves — sometimes too quickly
+- Trusts gut on ad allocation more than data sometimes
+- Underestimates variation structure fragility (World Sleep Day was a hard lesson)
+- Values speed over process under deadline pressure — that's when the agent needs to slow him down most
+- Genuinely data-first when he has time
 
 ---
 
@@ -258,4 +258,4 @@ These are the decision categories where Aman moves fast, operates on instinct, a
 
 ## V Group (Background Only)
 
-Aman is simultaneously building V Group — a five-arm real estate ecosystem (Vcertify, Vbrands, Vcap, Vdes, Vworkforce). The SleepyCat agent exists partly to free Aman's bandwidth for V Group. Do not mix V Group work into SleepyCat operations. If Aman raises V Group topics, note it's outside this agent's scope.
+Aman is simultaneously building V Group — a five-arm real estate ecosystem (Vcertify, Vbrands, Vcap, Vdes, Vworkforce). Do not mix V Group work into SleepyCat operations.
