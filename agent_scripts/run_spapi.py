@@ -1,12 +1,8 @@
-"""
-SleepyCat SP-API Daily Runner
-Schedule this via Windows Task Scheduler to run at 7:30 AM daily.
-
-Task Scheduler settings:
-  Program: python
-  Arguments: C:\Users\User\Downloads\sleepycat-agent\sleepycat-agent\run_spapi.py
-  Start in: C:\Users\User\Downloads\sleepycat-agent\sleepycat-agent
-"""
+# SleepyCat SP-API Daily Runner
+# Schedule via Windows Task Scheduler at 7:30 AM daily.
+# Program: python
+# Arguments: run_spapi.py
+# Start in: C:/Users/User/Downloads/sleepycat-agent/sleepycat-agent
 
 import sys
 from pathlib import Path
