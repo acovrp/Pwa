@@ -12,6 +12,11 @@ Choose your mode:
 
 ---
 
+## Brain File Rules
+
+- Always run `git pull` before editing any brain file (`brain\sleepycat_brain.md`, `brain\agent_context.md`, or any file under `brain\`)
+- Never auto-push changes. Only push when Aman explicitly says to commit or update brain.
+
 ## Key Paths (for reference)
 
 - Dashboard (local): `C:\Users\User\Downloads\pwa-push\index.html`
