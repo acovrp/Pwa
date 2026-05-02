@@ -260,6 +260,40 @@
   }
   .btn-primary:hover { opacity: 0.85; }
 
+  /* SUBSCRIPTIONS */
+  .sub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .sub-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; position: relative; overflow: hidden; transition: border-color .2s;
+  }
+  .sub-card:hover { border-color: var(--border-bright); }
+  .sub-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--accent, var(--text));
+  }
+  .sub-card.claude::before { background: var(--claude); }
+  .sub-card.gemini::before { background: var(--gemini); }
+  .sub-card.gpt::before { background: var(--gpt); }
+  .sub-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 8px; }
+  .sub-name { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; }
+  .sub-tier { font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: 0.04em; }
+  .sub-cost { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; text-align: right; }
+  .sub-cost-sub { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 1px; }
+  .sub-foot { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid var(--border); font-size: 10px; }
+  .sub-renewal { color: var(--muted); }
+  .sub-days {
+    font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 10px;
+  }
+  .sub-days.ok { background: rgba(90,232,160,0.12); color: var(--success); }
+  .sub-days.warn { background: rgba(240,192,64,0.12); color: var(--warn); }
+  .sub-days.danger { background: rgba(232,90,106,0.12); color: var(--danger); }
+  .sub-del {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 14px; padding: 0 4px; transition: color .15s; line-height: 1;
+  }
+  .sub-del:hover { color: var(--danger); }
+
   /* HISTORY */
   .history-list { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; }
   .history-list::-webkit-scrollbar { width: 3px; }
@@ -342,8 +376,33 @@
     </div>
   </div>
 
+  <!-- SUBSCRIPTIONS -->
+  <div class="section-title">Subscriptions</div>
+  <div class="sub-grid" id="subGrid"></div>
+  <div class="form-card add-section" style="margin-bottom:24px;">
+    <div class="form-row">
+      <div class="field">
+        <label>Plan</label>
+        <select id="sProvider">
+          <option value="claude">Claude Max</option>
+          <option value="gemini">Gemini Pro</option>
+          <option value="gpt">ChatGPT Plus</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>$ / month</label>
+        <input type="number" id="sCost" placeholder="20" step="0.01" min="0">
+      </div>
+      <div class="field">
+        <label>Next renewal</label>
+        <input type="date" id="sRenewal">
+      </div>
+    </div>
+    <button class="btn-primary" onclick="addSubscription()">+ Save Subscription</button>
+  </div>
+
   <!-- AI PROVIDER CARDS -->
-  <div class="section-title">Provider Breakdown</div>
+  <div class="section-title">API Usage Breakdown</div>
   <div class="cards" id="providerCards"></div>
 
   <!-- TOKEN USAGE CHART -->
@@ -420,12 +479,20 @@ const PROVIDERS = {
   }
 };
 
+const SUB_PLANS = {
+  claude: { name: 'Claude Max', tier: 'Anthropic · 5x Pro', cost: 100 },
+  gemini: { name: 'Gemini Pro', tier: 'Google One AI Premium', cost: 19.99 },
+  gpt:    { name: 'ChatGPT Plus', tier: 'OpenAI', cost: 20 }
+};
+
 let currentView = 'today';
 
 // ─── STORAGE ──────────────────────────────────────────────
 function load() {
-  try { return JSON.parse(localStorage.getItem('tokenLedger') || '{"entries":[],"balances":{}}'); }
-  catch { return { entries: [], balances: {} }; }
+  try {
+    const d = JSON.parse(localStorage.getItem('tokenLedger') || '{}');
+    return { entries: d.entries || [], balances: d.balances || {}, subscriptions: d.subscriptions || [] };
+  } catch { return { entries: [], balances: {}, subscriptions: [] }; }
 }
 function save(data) { localStorage.setItem('tokenLedger', JSON.stringify(data)); }
 
@@ -561,15 +628,89 @@ function renderCards() {
   });
 
   // Summary
+  const subTotal = (data.subscriptions || []).reduce((s, x) => s + (x.cost || 0), 0);
   document.getElementById('sumSpend').textContent = '$' + totalSpend.toFixed(3);
+  document.getElementById('sumSpendSub').textContent = subTotal > 0 ? `+ $${subTotal.toFixed(2)}/mo subs` : 'all providers';
   document.getElementById('sumTokens').textContent = fmtNum(totalTokens);
   document.getElementById('sumBalance').textContent = '$' + totalBalance.toFixed(2);
 
   // Bar chart
   renderBarChart(providerStats);
+  renderSubscriptions(data.subscriptions);
   renderHistory(data.entries);
 
   document.getElementById('lastUpdate').textContent = 'Updated ' + new Date().toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'});
+}
+
+// ─── SUBSCRIPTIONS ────────────────────────────────────────
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const target = new Date(dateStr + 'T00:00:00');
+  const now = new Date(); now.setHours(0,0,0,0);
+  return Math.round((target - now) / 86400000);
+}
+
+function renderSubscriptions(subs) {
+  const grid = document.getElementById('subGrid');
+  if (!subs.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">No subscriptions yet. Add Claude Max, Gemini Pro, or ChatGPT Plus below.</div>';
+    return;
+  }
+  grid.innerHTML = subs.map(s => {
+    const plan = SUB_PLANS[s.provider] || { name: s.provider, tier: '' };
+    const days = daysUntil(s.renewal);
+    let cls = 'ok', label = days != null ? days + 'd left' : '—';
+    if (days != null) {
+      if (days < 0) { cls = 'danger'; label = 'Expired'; }
+      else if (days <= 3) cls = 'danger';
+      else if (days <= 7) cls = 'warn';
+    }
+    return `<div class="sub-card ${s.provider}">
+      <div class="sub-head">
+        <div>
+          <div class="sub-name">${plan.name}</div>
+          <div class="sub-tier">${plan.tier}</div>
+        </div>
+        <div>
+          <div class="sub-cost">$${(s.cost||0).toFixed(2)}</div>
+          <div class="sub-cost-sub">per month</div>
+        </div>
+      </div>
+      <div class="sub-foot">
+        <span class="sub-renewal">Renews ${s.renewal || '—'}</span>
+        <span style="display:flex;align-items:center;gap:6px;">
+          <span class="sub-days ${cls}">${label}</span>
+          <button class="sub-del" onclick="deleteSubscription(${s.id})" title="Remove">×</button>
+        </span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addSubscription() {
+  const provider = document.getElementById('sProvider').value;
+  const costField = parseFloat(document.getElementById('sCost').value);
+  const renewal = document.getElementById('sRenewal').value;
+  const cost = isNaN(costField) ? SUB_PLANS[provider].cost : costField;
+
+  const data = load();
+  // Replace if same provider already exists
+  data.subscriptions = data.subscriptions.filter(s => s.provider !== provider);
+  data.subscriptions.push({ id: Date.now(), provider, cost, renewal });
+  save(data);
+
+  document.getElementById('sCost').value = '';
+  document.getElementById('sRenewal').value = '';
+
+  showToast('Subscription saved ✓');
+  renderCards();
+}
+
+function deleteSubscription(id) {
+  const data = load();
+  data.subscriptions = data.subscriptions.filter(s => s.id !== id);
+  save(data);
+  renderCards();
 }
 
 function renderBarChart(stats) {
@@ -673,9 +814,18 @@ function showToast(msg) {
 
 // ─── INIT ─────────────────────────────────────────────────
 document.getElementById('fDate').value = todayStr();
+const nextMonth = new Date(); nextMonth.setMonth(nextMonth.getMonth() + 1);
+document.getElementById('sRenewal').value = nextMonth.toISOString().slice(0,10);
 
 // Seed demo data if empty
 const initData = load();
+if (!initData.subscriptions.length) {
+  initData.subscriptions = [
+    { id: 1, provider: 'claude', cost: 100, renewal: nextMonth.toISOString().slice(0,10) },
+    { id: 2, provider: 'gemini', cost: 19.99, renewal: nextMonth.toISOString().slice(0,10) }
+  ];
+  save(initData);
+}
 if (!initData.entries.length) {
   const yesterday = daysAgo(1);
   const twoDaysAgo = daysAgo(2);
