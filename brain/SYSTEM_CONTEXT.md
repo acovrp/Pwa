@@ -129,7 +129,7 @@ When brain is updated:
 - Trigger: type `update brain: [content]` at agent prompt
 - Method: `agent.update_brain()` in core.py
 - Flow: shows proposal → y/n approval → writes to brain file → git push
-- **Known issue as of May 2026:** Method may not be saved in core.py — verify with `findstr /n "update_brain" agent\core.py`
+- Confirmed present in `agent/core.py` (lines 477–519) — appends content to brain file, requires y/n approval, then git pushes
 
 ### Dashboard (index.html)
 - Version: v7.2
@@ -137,6 +137,13 @@ When brain is updated:
 - Line 588 is 42KB minified JSON — don't edit that line
 - Always syntax-check after JS edits: extract script, run `node --check`
 - Deploy: edit locally → git push → GitHub Pages auto-updates in ~60 seconds
+
+### GitHub / Git state
+- Dead repos deleted: `sleepycat-dashboard`, `sleepycat-pwa`, `agent1` — these no longer exist on GitHub
+- Git identity: `Aman Verma <av291297@gmail.com>` (set globally)
+- Auto-push disabled: nothing pushes to GitHub automatically. Only two triggers push:
+  1. `update brain: [content]` at agent prompt → proposes update → requires y approval → pushes
+  2. Manual `git push` from terminal
 
 ### Voice (voice.py)
 - STT: Google Speech Recognition (requires internet)
@@ -237,7 +244,6 @@ Do not mix V Group work into SleepyCat operations.
 cd C:\Users\User\Downloads\sleepycat-agent\sleepycat-agent
 python run_agent.py
 # If TabError: open agent\core.py, find mixed tabs/spaces, fix indentation
-# If AttributeError update_brain: method missing from core.py — add it
 ```
 
 ### Dashboard broken

@@ -84,14 +84,14 @@ Aman's single-file HTML command center, built personally and maintained by the a
 - Single HTML file, embedded JS + CSS
 - Data via CSV uploads from Seller Central, Flipkart, Brand Analytics
 - Design system: Kanishk's S&OP light theme
-- 11 upload slots total; only 3 have active data processors: `br` (Business Report), `st` (Search Terms), `ba` (Brand Analytics). The other 8 (SP campaigns, SB, SD, Flipkart sales, Flipkart ads, Inventory, Returns) accept files but don't yet update any dashboard numbers.
+- 11 upload slots total, all with active processors: `br` (units/revenue/sessions via ASIN_MAP), `st` (keywords), `ba` (search funnel), `sp` (AMZ adspend/ACOS/TACoS via ASIN_MAP), `sb`/`sd` (total spend → `window.UPLOADED_TOTALS.sb/sd`), `fk` (FK units/revenue via FK_NAME_MAP title matching), `fkads` (FK total spend → `window.UPLOADED_TOTALS.fkads`), `inv` (stock levels → `window.INVENTORY`), `ret` (returns by reason → `window.RETURNS`), `pp` (raw rows → `window.PURCHASE_DATA`).
 - Channels: Amazon, Flipkart, Quick Commerce, Other, Search Funnel tab
 
 ### ID Scheme (critical — causes bugs if confused)
 - `PRODUCTS[].id` = 12-char (e.g. `hybridlatexm`, `originalmatt`)
 - `PRODUCTS[].line` = 8-char (e.g. `hybridla`, `original`)
 - Dropdown `value` attributes match `line` (8-char), not `id`
-- KW product filtering must use `p.id.indexOf(S.line) === 0`, not `p.id === S.line`
+- KW product filtering uses `p.id.indexOf(S.line)===0 || p.line===S.line` (the OR clause handles cases where id prefix doesn't match line, e.g. after Protector's line was renamed to `"protector"`)
 
 ### Known Data Sources
 | Source | What it feeds |
@@ -113,7 +113,7 @@ Aman's single-file HTML command center, built personally and maintained by the a
 - KW search debounced 200ms
 
 ### Filter bugs fixed post-v7.2 (May 2026)
-- **Protector dropdown**: `value="mattress"` is correct. `PRODUCTS[mattressprot].line = "mattress"` — the dropdown value must match `p.line`, not `p.id`. Do not change to `"mattressprot"` — that breaks the filter (zero rows returned).
+- **Protector dropdown**: `value="protector"` is correct. `PRODUCTS[mattressprot].line = "protector"` (renamed from the old confusing `"mattress"` value). `PROD_SIZES` key is also `protector`. Do not change to `"mattressprot"` — that breaks the filter.
 - **Comforter + Bedsheet missing**: `comforte` and `bedshee` product lines added to dropdown.
 - **Size + Thickness filter broken**: Fixed by adding `PROD_SIZES` and `PROD_THICKNESSES` static lookup tables (keyed by `p.line`) as a fallback in `getProds()`.
 
@@ -246,13 +246,15 @@ Aman is building the Marketplace OS into a product — an AI-led marketplace man
 | Marketplace OS | Consolidated dashboard | v7.2, hosted at https://acovrp.github.io/Pwa/ |
 
 ### Agent Infrastructure
-- Agent runs at: `C:\Users\User\Downloads\sleepycat-agent\sleepycat-agent\`
-- Start command: `python run_agent.py`
-- Dashboard: `http://localhost:8080`
+- Agent entry point: `C:\Users\User\Downloads\sleepycat-agent\sleepycat-agent\run_agent.py`
+- Start command: `cd C:\Users\User\Downloads\sleepycat-agent\sleepycat-agent && python run_agent.py`
+- Auto-starts on Windows login via Task Scheduler ("SleepyCat Agent" task)
+- Dashboard repo (local): `C:\Users\User\Downloads\pwa-push\index.html`
+- Brain path (config.yaml): `C:\Users\User\Downloads\pwa-push\brain\sleepycat_brain.md`
 - Watch folder: `C:\Users\User\Documents\SleepyCat-Data`
-- GitHub CLI at: `C:\Program Files\GitHub CLI\gh.exe` (not in PATH for bash — use full path)
+- GitHub: `acovrp/Pwa`, branch `main` — dashboard, brain files, agent context all live here
+- GitHub CLI: `C:\Program Files\GitHub CLI\gh.exe` (not in PATH — use full path)
 - GitHub auth: logged in as `acovrp`
-- Single repo: `acovrp/Pwa` — dashboard, brain files, agent context all live here
 
 ---
 
