@@ -98,7 +98,7 @@ class SPAPIClient:
         doc_id = self._poll_report(report_id)
         raw = self._download_document(doc_id)
 
-        reader = csv.DictReader(io.StringIO(raw), delimiter="\t")
+        reader = csv.DictReader(io.StringIO(raw, newline=""), delimiter="\t")
         listings = {}
         for row in reader:
             asin = row.get("asin1", "").strip()
