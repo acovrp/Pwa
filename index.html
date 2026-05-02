@@ -318,7 +318,8 @@ tbody tr.l3-row.open{display:table-row}
       <option value="sleepyca">Lite Pillow</option><option value="cuddlepi">Cuddle</option>
       <option value="cervical">Cervical</option><option value="latexort">Latex Ortho</option>
       <option value="cloudspr">Cloud Spring</option>
-      <option value="mattressprot">Protector</option>
+      <option value="mattress">Protector</option>
+      <option value="comforte">Comforter</option><option value="bedshee">Bedsheet</option>
     </select>
   </div>
   <div class="filter-group"><label>Size</label>
@@ -846,16 +847,41 @@ function parseSkuSize(sku) {
   return {size:size, thick:thick};
 }
 
+// Static size/thickness lookup keyed by product line (used when SKU-level data is absent)
+var PROD_SIZES = {
+  hybridla:['king','queen','double','single'], original:['king','queen','double','single'],
+  trifoldm:['double','single'], ultimama:['king','queen','double','single'],
+  latexort:['king','queen','double','single'], cloudspr:['king','queen','double','single'],
+  memoryfo:['king','queen','double','single'], mattress:['king','queen','double','single'],
+  bedshee:['king','queen','double','single'], comforte:['king','queen','double','single']
+  // Pillow lines omitted — no bed-size dimension
+};
+var PROD_THICKNESSES = {
+  hybridla:['8','10'], original:['6','8'], ultimama:['10'],
+  latexort:['6','8'], cloudspr:['6','8','10']
+};
+
 function getProds() {
   return PRODUCTS.filter(function(p) {
     if (S.cat!=='all' && p.cat!==S.cat) return false;
     if (S.line!=='all' && p.line!==S.line) return false;
-    if ((S.size!=='all' || S.thick!=='all') && p.skus && p.skus.length) {
-      var match = p.skus.some(function(sk) {
-        var ps = parseSkuSize(sk.sku || '');
-        return (S.size==='all' || ps.size===S.size) && (S.thick==='all' || ps.thick===S.thick);
-      });
-      if (!match) return false;
+    if (S.size!=='all' || S.thick!=='all') {
+      if (p.skus && p.skus.length) {
+        var match = p.skus.some(function(sk) {
+          var ps = parseSkuSize(sk.sku || '');
+          return (S.size==='all' || ps.size===S.size) && (S.thick==='all' || ps.thick===S.thick);
+        });
+        if (!match) return false;
+      } else {
+        if (S.size!=='all') {
+          var sz = PROD_SIZES[p.line];
+          if (!sz || sz.indexOf(S.size) === -1) return false;
+        }
+        if (S.thick!=='all') {
+          var tk = PROD_THICKNESSES[p.line];
+          if (!tk || tk.indexOf(S.thick) === -1) return false;
+        }
+      }
     }
     return true;
   });
