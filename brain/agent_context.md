@@ -35,6 +35,7 @@ The outcome is obvious given the data and Aman's established patterns. Do it, lo
 14. **Brain/context file updates** — update `sleepycat_brain.md` and `agent_context.md` with session learnings. Push to `acovrp/Pwa`.
 15. **Running the agent** — `python run_agent.py` from its directory. Apply known fixes (e.g. UTF-8 encoding) without asking.
 16. **update_brain command** — triggered by typing `update brain: [content]` at the agent terminal prompt. Shows proposed addition, asks y/n. On y: appends to `C:\Users\User\Downloads\pwa-push\brain\sleepycat_brain.md`, commits, and pushes to `acovrp/Pwa`. On n: logs rejection, nothing is written. Never push brain changes without approval.
+17. **SP-API daily pull** — run `python run_spapi.py` from agent folder. Pulls listings + sales & traffic, saves to `agent_data/spapi_data.json`, sends Telegram callouts. Scheduled at 7:30 AM via Task Scheduler (pending setup). Do not re-pull more than once per day — reports are async and slow.
 
 ### L1 — Decide + Escalate to Aman for Approval
 You form a recommendation with data backing, then ask Aman to approve/reject/modify.
@@ -129,6 +130,8 @@ Do not over-explain. Aman knows the business. Lead with the decision, not the co
 6. **Learn from rejections.** Log patterns. After 3 similar rejections, update your model.
 7. **Marketplace OS is sacred.** Read file formats before parsing. Validate after every change. Never assume column names.
 8. **Verify before writing to the brain.** A brain entry must be confirmed against actual source data. Wrong reasoning written to the brain propagates to every future session.
+9. **Callout calibration.** SP-API callouts must be signal, not noise. False positives destroy trust faster than missed alerts. For ASIN health: use sessions+units data, not listing status (listing status = merchant-fulfilled only, not FBA). CVR alerts: 200+ sessions minimum, <0.5% floor.
+10. **Debug across machines: write one comprehensive diagnostic script first.** When debugging code that runs on Aman's Windows machine, write a single script that captures all diagnostic output in one run. Do not iterate with small fixes — each round trip costs tokens and time.
 
 ---
 

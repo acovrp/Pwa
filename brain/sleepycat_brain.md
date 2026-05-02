@@ -245,6 +245,31 @@ Aman is building the Marketplace OS into a product — an AI-led marketplace man
 | Snowflake | Ad spend data | ~62% coverage (known gap) |
 | Marketplace OS | Consolidated dashboard | v7.2, hosted at https://acovrp.github.io/Pwa/ |
 
+### SP-API (Mark1) — Now Live (May 2026)
+- App: Mark1, Developer Central, Private developer, self-authorized (1 of 10 slots used)
+- Credentials in `config.yaml` on agent machine — never commit to git
+- Region: **EU endpoint** — `sellingpartnerapi-eu.amazon.com` (India is EU, not FE)
+- Reports API version: `2021-06-30`
+- All reports are GZIP compressed — decode with `utf-8-sig` (handles BOM on first column)
+- Daily runner: `run_spapi.py` + `spapi_module.py` in agent folder
+- Output: `agent_data/spapi_data.json` — listings + traffic + callouts
+- Telegram callouts: pending wiring. Task Scheduler scheduling: pending.
+
+**What SP-API pulls:**
+- `GET_MERCHANT_LISTINGS_ALL_DATA` — 1165 ASINs, TSV, fields: `asin1`, `status`, `seller-sku`, `item-name`, `quantity`
+- `GET_SALES_AND_TRAFFIC_REPORT` — 536 ASINs with traffic, JSON, fields: `sessions`, `buyBoxPercentage`, `unitSessionPercentage` (CVR), `pageViews`, `unitsOrdered`, `orderedProductSales`
+- Does NOT cover ad spend — stays Snowflake/ad report CSVs
+
+**Critical calibration note:**
+- `GET_MERCHANT_LISTINGS_ALL_DATA` `status` column = merchant-fulfilled status only
+- SleepyCat is FBA/Flex — this column is unreliable for live/dead ASIN detection
+- True dead ASIN = 0 sessions + 0 units + 0 page views for 2+ consecutive days (from traffic report)
+- Do NOT flag "inactive" from listings status — will false-positive on all FBA ASINs
+
+**CVR callout thresholds (calibrated May 2026):**
+- Minimum sessions: 200+ (below this, child ASIN traffic split makes CVR meaningless)
+- CVR floor: < 0.5% (1% threshold flags too many size variants)
+
 ### Agent Infrastructure
 - Agent entry point: `C:\Users\User\Downloads\sleepycat-agent\sleepycat-agent\run_agent.py`
 - Start command: `cd C:\Users\User\Downloads\sleepycat-agent\sleepycat-agent && python run_agent.py`
