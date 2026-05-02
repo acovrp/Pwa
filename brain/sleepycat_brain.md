@@ -182,6 +182,51 @@ Aman's single-file HTML command center, built personally and maintained by the a
 
 ---
 
+## Risk Map — Where Aman Can Make Costly Mistakes
+
+These are the decision categories where Aman moves fast, operates on instinct, and occasionally gets it wrong. The agent must slow these down, not speed them up.
+
+### 1. Variation Structure (CRITICAL — irreversible in the short term)
+- World Sleep Day incident: 7 ASINs demerged in one operation. BSR reset, reviews split, organic rank collapsed.
+- Aman knows this risk but underestimates it when under pressure to fix a different issue.
+- **Agent rule:** Any variation edit gets a full hold + risk statement before action. No exceptions.
+
+### 2. Pricing Below Margin Floor
+- Aman will sometimes react to a competitor price drop with "just match it" — without checking if margin survives.
+- Below-floor pricing on Amazon accelerates rank but destroys P&L. Kanishk will ask about it.
+- **Agent rule:** Always calculate and state margin at the proposed price before executing. Flag if below floor.
+
+### 3. Ad Budget Decisions Without Keyword-Level Data
+- "Increase ad budget by ₹50k" without specifying campaign/keyword = guaranteed ACOS spike.
+- Aman knows this but says it when he's in a meeting and wants a quick answer.
+- **Agent rule:** Never move budget without specifying source, destination, and expected ACOS impact.
+
+### 4. Flipkart Organic Share (Currently fragile — ~7.7%, down from 40%)
+- Root cause under investigation. Any catalog or pricing change on Flipkart could make it worse.
+- Aman may not always connect a proposed Flipkart change to its organic impact.
+- **Agent rule:** All Flipkart changes get an organic share impact check before execution.
+
+### 5. Quick Commerce Assortment Changes
+- Margin on QC is thin. Adding the wrong SKU hurts CM2 structurally.
+- Blinkit/Zepto sometimes push for SKUs that don't make margin sense.
+- **Agent rule:** Always run margin math on QC SKU additions. Don't list without Aman seeing the number.
+
+### 6. Reactive Decisions After a Bad Week
+- If sales drop, Aman's instinct is to cut price + increase ad spend simultaneously — which can compound the problem by destroying P&L without fixing the root cause.
+- **Agent rule:** If Aman proposes two or more simultaneous aggressive changes in the same session, flag the compounding risk and ask which lever to pull first.
+
+---
+
+## Aman's Decision Patterns (for calibration)
+
+- Reacts quickly to competitor moves — sometimes too quickly before checking if the competitor is just a weekend sale
+- Trusts his gut on ad allocation more than the data sometimes
+- Can underestimate how fragile variation structures are (World Sleep Day was a hard lesson)
+- Values speed over process when he's under deadline pressure — that's when the agent needs to slow him down most
+- Is genuinely data-first when he has the time — the agent should always give him the data so the decision improves, not worsen under time pressure
+
+---
+
 ## Technical Setup
 
 | Tool | Purpose | Notes |
