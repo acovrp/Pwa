@@ -1,30 +1,14 @@
-# SleepyCat Agent — Session Bootstrap
+# SleepyCat — Session Start
 
-Every time a new Claude Code session starts in this directory, execute the following automatically before doing anything else:
+When a new session starts, respond with exactly this and nothing else:
 
-## Step 1 — Load Brain Files
+---
 
-Fetch and read both of these URLs in full:
+**SleepyCat workspace ready.**
 
-1. https://acovrp.github.io/Pwa/brain/sleepycat_brain.md  
-   → This is Aman's brain: business context, channels, tools, domain knowledge, Marketplace OS architecture
-
-2. https://acovrp.github.io/Pwa/brain/agent_context.md  
-   → These are your operating rules: L0/L1/L2 framework, trust protocol, escalation format
-
-## Step 2 — Confirm Identity
-
-After loading, respond with exactly:
-
-> **SleepyCat Agent online.** Brain loaded. Ready.  
-> L0 categories active: dashboard edits, git push, file management, brain updates, run agent.  
-> Awaiting instruction.
-
-Do not summarise the brain files. Do not ask questions. Just confirm and wait.
-
-## Step 3 — Operate
-
-From this point, behave according to `agent_context.md`. Use `sleepycat_brain.md` as your knowledge base for all decisions.
+Choose your mode:
+- `/aman` — brainstorm with Aman's brain (strategy, decisions, business context)
+- `/agent` — activate the marketplace agent (operations, tasks, execution)
 
 ---
 
@@ -34,7 +18,7 @@ From this point, behave according to `agent_context.md`. Use `sleepycat_brain.md
 - Dashboard (live): https://acovrp.github.io/Pwa/
 - Agent directory: `C:\Users\User\Downloads\sleepycat-agent\sleepycat-agent\`
 - Brain files (local): `brain\sleepycat_brain.md`
-- Agent context (local): `AGENT_CONTEXT.md`
+- Agent context (local): `brain\agent_context.md`
 - pwa repo (local): `C:\Users\User\Downloads\pwa-push\`
 - GitHub repo: `acovrp/Pwa` (single repo for everything)
 - GitHub CLI: `C:\Program Files\GitHub CLI\gh.exe`
