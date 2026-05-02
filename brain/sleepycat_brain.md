@@ -74,10 +74,11 @@ Aman leads 5 specialist roles. The agent does not manage them directly — it pr
 
 Aman's single-file HTML command center, built personally and maintained by the agent.
 
-**Current version: v7.2** (full audit + 30 bug fixes, May 2026)
-**Live URL: https://acovrp.github.io/Pwa/**
-**Local file: C:\Users\User\Downloads\marketplace-os-v7.2.html**
-**GitHub repo: acovrp/pwa** (GitHub Pages enabled)
+**Current version: v7.2** (full audit + 30 bug fixes, May 2026; filter fixes May 2026)
+**Live URL: https://acovrp.github.io/sleepycat-dashboard/**
+**Local file: `C:\Users\User\Downloads\pwa-push\index.html`**
+**GitHub repo: acovrp/sleepycat-dashboard** (GitHub Pages enabled, serves from `master` branch)
+**Note:** `acovrp/Pwa` is a separate repo that hosts the brain files only (not the dashboard)
 
 ### Architecture
 - Single HTML file, embedded JS + CSS
@@ -104,8 +105,6 @@ Aman's single-file HTML command center, built personally and maintained by the a
 ### Bugs fixed in v7.2 (reference — don't re-introduce)
 - setFunnel() now scoped to `.funnel-type-nav .ftn-btn` (was corrupting SF tab active states)
 - Funnel data is monotonically decreasing (search > imp > click > atc > purchase)
-- Protector dropdown: `value="mattressprot"` (was `"mattress"`, collided with Mattress category)
-- Size + Thickness filters now wired into `getProds()` via `parseSkuSize()`
 - `vs Target` uses Mar MTD total (was projecting from last week incorrectly)
 - `renderAmzKpi` has null guard on `organic_pct.mar`
 - Rate metric totals show `—` (unweighted mean was misleading)
@@ -113,12 +112,18 @@ Aman's single-file HTML command center, built personally and maintained by the a
 - `dsb` status badge updates on upload
 - KW search debounced 200ms
 
+### Filter bugs fixed post-v7.2 (May 2026)
+- **Protector dropdown**: `value` was `"mattressprot"` but `PRODUCTS[].line` is `"mattress"` — filter returned zero rows. Fixed to `value="mattress"`. (The brain previously had this backwards — do not re-introduce `mattressprot`.)
+- **Comforter + Bedsheet missing**: `comforte` and `bedshee` product lines existed in PRODUCTS but had no dropdown options — both added.
+- **Size + Thickness filter broken**: `getProds()` only filtered when `p.skus` existed, but no products have `skus` data, so size/thickness filtering was silently skipped for every row. Fixed by adding `PROD_SIZES` and `PROD_THICKNESSES` static lookup tables (keyed by `p.line`) as a fallback branch in `getProds()`. Pillow lines have no entry in `PROD_SIZES` so they are correctly hidden when a bed size is selected.
+
 ### Dashboard editing rules
 - Line 588 is a 42KB minified JSON blob — Read tool fails on ranges including it; use Grep
 - Always syntax-check JS after edits: extract script tag, run `node --check`
 - Funnel data must decrease monotonically at every stage
 - Rate metrics (ACOS, CTR, CVR, TACoS) never summed across products
 - Read column headers from actual file before writing any parser — never assume
+- **Deploy flow**: edit `C:\Users\User\Downloads\pwa-push\index.html` → commit → push to `origin master` on `acovrp/sleepycat-dashboard`. The local remote was previously misconfigured to `Pwa`; it is now correctly set to `sleepycat-dashboard`. GitHub Pages serves from `master` (not `main`).
 
 ---
 

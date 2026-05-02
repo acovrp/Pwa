@@ -55,8 +55,8 @@ Aman leads 5 specialist roles:
 ### Marketplace OS Dashboard
 - Single-file HTML command center Aman built personally
 - **Current version: v7.2** — full audit + 30 bug fixes completed May 2026
-- **Live at: https://acovrp.github.io/Pwa/** (GitHub Pages, repo: acovrp/pwa)
-- Local file: `C:\Users\User\Downloads\marketplace-os-v7.2.html`
+- **Live at: https://acovrp.github.io/sleepycat-dashboard/** (GitHub Pages, repo: acovrp/sleepycat-dashboard, branch: master)
+- Local file: `C:\Users\User\Downloads\pwa-push\index.html` (local repo remote = `sleepycat-dashboard.git`)
 - Pulls real Amazon and Flipkart data via CSV uploads
 - Design standard: Kanishk's S&OP design system (light theme)
 - 11 upload slots total; only `br`, `st`, `ba` have active processors
@@ -120,9 +120,9 @@ Aman leads 5 specialist roles:
 ### GitHub / Hosting
 - GitHub CLI (`gh`) is installed at `C:\Program Files\GitHub CLI\gh.exe` — not in PATH for bash/Claude Code terminal
 - Auth: logged in as `acovrp` (token in keyring)
-- PWA repo: `acovrp/pwa` → GitHub Pages at `https://acovrp.github.io/Pwa/`
-- Dashboard repo: `acovrp/sleepycat-dashboard` → `https://acovrp.github.io/sleepycat-dashboard/`
-- To push dashboard updates: copy v7.x.html to `C:\Users\User\Downloads\pwa-push\index.html`, commit, push
+- PWA repo: `acovrp/pwa` → GitHub Pages at `https://acovrp.github.io/Pwa/` — hosts brain files only
+- Dashboard repo: `acovrp/sleepycat-dashboard` → `https://acovrp.github.io/sleepycat-dashboard/` — hosts the dashboard (master branch)
+- To push dashboard updates: edit `C:\Users\User\Downloads\pwa-push\index.html`, commit, `git push origin master` (NOT main — Pages serves master)
 
 ### Dashboard Editing Patterns
 - Always run JS syntax check after edits: extract script tag, run `node --check`
@@ -131,6 +131,9 @@ Aman leads 5 specialist roles:
 - Rate metrics (ACOS, CTR, CVR, TACoS) should never be summed across products — show `—` in totals row
 - Target achievement should use MTD actual vs monthly target, not projected from last week
 - File uploads: validate filename → type mapping before processing; never silently accept xlsx
+- **Protector dropdown value is `"mattress"`** (matches `p.line`) — never use `"mattressprot"`, that was a bug
+- **Size/thickness filter**: no products have `skus` data; filtering uses `PROD_SIZES` and `PROD_THICKNESSES` static lookup tables keyed by `p.line`. Pillow lines have no entry → correctly hidden on bed-size filter
+- **All product lines in dropdown**: hybridla, original, trifoldm, ultimama, memoryfo, mfpillow, cloudpil, softtouc, sleepyca, cuddlepi, cervical, latexort, cloudspr, mattress (Protector), comforte (Comforter), bedshee (Bedsheet)
 
 ## Analytical Style
 
