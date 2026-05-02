@@ -113,7 +113,7 @@ Aman's single-file HTML command center, built personally and maintained by the a
 - KW search debounced 200ms
 
 ### Filter bugs fixed post-v7.2 (May 2026)
-- **Protector dropdown**: `value` was `"mattress"` — collided with the Mattress category option, causing ambiguous filtering. Fixed to `value="mattressprot"`. Do not revert to `"mattress"`.
+- **Protector dropdown**: `value="mattress"` is correct. `PRODUCTS[mattressprot].line = "mattress"` — the dropdown value must match `p.line`, not `p.id`. Do not change to `"mattressprot"` — that breaks the filter (zero rows returned). Category dropdown `f-cat` also has `value="mattress"` for the Mattress category but feeds a different state variable (`S.cat` vs `S.line`) — not a collision.
 - **Comforter + Bedsheet missing**: `comforte` and `bedshee` product lines existed in PRODUCTS but had no dropdown options — both added.
 - **Size + Thickness filter broken**: `getProds()` only filtered when `p.skus` existed, but no products have `skus` data, so size/thickness filtering was silently skipped for every row. Fixed by adding `PROD_SIZES` and `PROD_THICKNESSES` static lookup tables (keyed by `p.line`) as a fallback branch in `getProds()`. Pillow lines have no entry in `PROD_SIZES` so they are correctly hidden when a bed size is selected.
 
