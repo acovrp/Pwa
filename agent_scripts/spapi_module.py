@@ -90,9 +90,15 @@ class SPAPIClient:
         doc_info = resp.json()
         url = doc_info["url"]
         compression = doc_info.get("compressionAlgorithm", "")
+        print(f"[SP-API] Compression: '{compression}', downloading...")
         data_resp = requests.get(url)
         data_resp.raise_for_status()
+        print(f"[SP-API] Downloaded {len(data_resp.content)} bytes")
         if compression == "GZIP":
+            return _gzip.decompress(data_resp.content).decode("utf-8")
+        # Try gzip anyway if content looks compressed
+        if data_resp.content[:2] == b'\x1f\x8b':
+            print("[SP-API] Auto-detected GZIP, decompressing...")
             return _gzip.decompress(data_resp.content).decode("utf-8")
         return data_resp.text
 
@@ -105,9 +111,15 @@ class SPAPIClient:
 
         raw = raw.replace("\r\n", "\n").replace("\r", "\n")
         reader = csv.DictReader(io.StringIO(raw), delimiter="\t")
+        # Debug: print actual column names on first run
+        fieldnames = reader.fieldnames
+        print(f"[SP-API] Listings columns: {fieldnames}")
+        asin_col = "asin1" if fieldnames and "asin1" in fieldnames else (
+            next((c for c in (fieldnames or []) if "asin" in c.lower()), "asin1")
+        )
         listings = {}
         for row in reader:
-            asin = row.get("asin1", "").strip()
+            asin = row.get(asin_col, "").strip()
             if asin:
                 listings[asin] = {
                     "status": row.get("status", "").strip(),
