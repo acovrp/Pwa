@@ -260,6 +260,19 @@
   }
   .btn-primary:hover { opacity: 0.85; }
 
+  /* RECOMMENDATION BANNER */
+  .reco-banner {
+    background: linear-gradient(135deg, var(--card), var(--surface));
+    border: 1px solid var(--border-bright); border-radius: 10px;
+    padding: 14px 18px; margin-bottom: 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    flex-wrap: wrap;
+  }
+  .reco-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 4px; }
+  .reco-pick { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+  .reco-reason { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .reco-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; vertical-align: middle; box-shadow: 0 0 8px currentColor; }
+
   /* SUBSCRIPTIONS */
   .sub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin-bottom: 14px; }
   .sub-card {
@@ -279,6 +292,14 @@
   .sub-tier { font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: 0.04em; }
   .sub-cost { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; text-align: right; }
   .sub-cost-sub { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 1px; }
+  .sub-usage { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .sub-bar-wrap { }
+  .sub-bar-top { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 4px; }
+  .sub-bar-lbl { color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-size: 9px; }
+  .sub-bar-pct { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 10px; }
+  .sub-bar-track { height: 5px; background: var(--surface); border-radius: 3px; overflow: hidden; }
+  .sub-bar-fill { height: 100%; border-radius: 3px; transition: width .5s; }
+  .sub-bar-reset { font-size: 9px; color: var(--muted); margin-top: 3px; }
   .sub-foot { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid var(--border); font-size: 10px; }
   .sub-renewal { color: var(--muted); }
   .sub-days {
@@ -377,7 +398,8 @@
   </div>
 
   <!-- SUBSCRIPTIONS -->
-  <div class="section-title">Subscriptions</div>
+  <div class="section-title">Subscriptions &amp; Quota</div>
+  <div class="reco-banner" id="recoBanner" style="display:none;"></div>
   <div class="sub-grid" id="subGrid"></div>
   <div class="form-card add-section" style="margin-bottom:24px;">
     <div class="form-row">
@@ -398,7 +420,27 @@
         <input type="date" id="sRenewal">
       </div>
     </div>
-    <button class="btn-primary" onclick="addSubscription()">+ Save Subscription</button>
+    <div class="form-row">
+      <div class="field">
+        <label>Session % used</label>
+        <input type="number" id="sSessionPct" placeholder="0" min="0" max="100">
+      </div>
+      <div class="field">
+        <label>Session resets at</label>
+        <input type="datetime-local" id="sSessionReset">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label>Weekly % used</label>
+        <input type="number" id="sWeeklyPct" placeholder="0" min="0" max="100">
+      </div>
+      <div class="field">
+        <label>Weekly resets at</label>
+        <input type="datetime-local" id="sWeeklyReset">
+      </div>
+    </div>
+    <button class="btn-primary" onclick="addSubscription()">+ Save / Update Subscription</button>
   </div>
 
   <!-- AI PROVIDER CARDS -->
@@ -650,6 +692,62 @@ function daysUntil(dateStr) {
   return Math.round((target - now) / 86400000);
 }
 
+function fmtCountdown(ts) {
+  if (!ts) return null;
+  const ms = new Date(ts).getTime() - Date.now();
+  if (ms <= 0) return 'reset now';
+  const m = Math.floor(ms / 60000);
+  if (m < 60) return m + 'm';
+  const h = Math.floor(m / 60), rm = m % 60;
+  if (h < 24) return h + 'h ' + rm + 'm';
+  const d = Math.floor(h / 24);
+  return d + 'd ' + (h % 24) + 'h';
+}
+
+function pctColor(pct) {
+  if (pct >= 80) return 'var(--danger)';
+  if (pct >= 60) return 'var(--warn)';
+  return 'var(--success)';
+}
+
+function renderRecommendation(subs) {
+  const banner = document.getElementById('recoBanner');
+  const eligible = subs.filter(s => s.sessionPct != null && s.sessionPct < 95);
+  if (!eligible.length) {
+    banner.style.display = 'none';
+    return;
+  }
+  // Pick lowest session %, then lowest weekly %
+  const sorted = [...eligible].sort((a,b) => {
+    const sd = (a.sessionPct||0) - (b.sessionPct||0);
+    if (sd !== 0) return sd;
+    return (a.weeklyPct||0) - (b.weeklyPct||0);
+  });
+  const pick = sorted[0];
+  const plan = SUB_PLANS[pick.provider] || { name: pick.provider };
+  const color = PROVIDERS[pick.provider]?.color || '#fff';
+  const sessReset = fmtCountdown(pick.sessionReset);
+  const reason = `${pick.sessionPct||0}% session used` +
+    (pick.weeklyPct != null ? ` · ${pick.weeklyPct}% weekly` : '') +
+    (sessReset ? ` · session resets in ${sessReset}` : '');
+
+  // Highest usage warning
+  const highest = [...subs].filter(s => s.sessionPct != null).sort((a,b) => (b.sessionPct||0) - (a.sessionPct||0))[0];
+  const warn = highest && highest.provider !== pick.provider && highest.sessionPct >= 70
+    ? `<div class="reco-reason" style="color:var(--warn);margin-top:4px;">⚠ ${SUB_PLANS[highest.provider]?.name} at ${highest.sessionPct}% — load-share to ${plan.name}</div>`
+    : '';
+
+  banner.innerHTML = `
+    <div>
+      <div class="reco-label">Use right now</div>
+      <div class="reco-pick"><span class="reco-dot" style="background:${color};color:${color}"></span>${plan.name}</div>
+      <div class="reco-reason">${reason}</div>
+      ${warn}
+    </div>
+  `;
+  banner.style.display = 'flex';
+}
+
 function renderSubscriptions(subs) {
   const grid = document.getElementById('subGrid');
   if (!subs.length) {
@@ -665,6 +763,36 @@ function renderSubscriptions(subs) {
       else if (days <= 3) cls = 'danger';
       else if (days <= 7) cls = 'warn';
     }
+
+    const sessPct = s.sessionPct != null ? Math.min(100, Math.max(0, s.sessionPct)) : null;
+    const weekPct = s.weeklyPct != null ? Math.min(100, Math.max(0, s.weeklyPct)) : null;
+    const sessReset = fmtCountdown(s.sessionReset);
+    const weekReset = fmtCountdown(s.weeklyReset);
+
+    const sessionBar = sessPct != null ? `
+      <div class="sub-bar-wrap">
+        <div class="sub-bar-top">
+          <span class="sub-bar-lbl">Session</span>
+          <span class="sub-bar-pct" style="color:${pctColor(sessPct)}">${sessPct}%</span>
+        </div>
+        <div class="sub-bar-track"><div class="sub-bar-fill" style="width:${sessPct}%;background:${pctColor(sessPct)}"></div></div>
+        ${sessReset ? `<div class="sub-bar-reset">Resets in ${sessReset}</div>` : ''}
+      </div>` : '';
+
+    const weeklyBar = weekPct != null ? `
+      <div class="sub-bar-wrap">
+        <div class="sub-bar-top">
+          <span class="sub-bar-lbl">Weekly</span>
+          <span class="sub-bar-pct" style="color:${pctColor(weekPct)}">${weekPct}%</span>
+        </div>
+        <div class="sub-bar-track"><div class="sub-bar-fill" style="width:${weekPct}%;background:${pctColor(weekPct)}"></div></div>
+        ${weekReset ? `<div class="sub-bar-reset">Resets in ${weekReset}</div>` : ''}
+      </div>` : '';
+
+    const usageBlock = (sessionBar || weeklyBar)
+      ? `<div class="sub-usage">${sessionBar}${weeklyBar}</div>`
+      : `<div class="sub-usage"><div class="empty-state" style="padding:8px;font-size:10px;">Tap form below to log session/weekly %</div></div>`;
+
     return `<div class="sub-card ${s.provider}">
       <div class="sub-head">
         <div>
@@ -676,6 +804,7 @@ function renderSubscriptions(subs) {
           <div class="sub-cost-sub">per month</div>
         </div>
       </div>
+      ${usageBlock}
       <div class="sub-foot">
         <span class="sub-renewal">Renews ${s.renewal || '—'}</span>
         <span style="display:flex;align-items:center;gap:6px;">
@@ -685,24 +814,42 @@ function renderSubscriptions(subs) {
       </div>
     </div>`;
   }).join('');
+
+  renderRecommendation(subs);
 }
 
 function addSubscription() {
   const provider = document.getElementById('sProvider').value;
   const costField = parseFloat(document.getElementById('sCost').value);
   const renewal = document.getElementById('sRenewal').value;
-  const cost = isNaN(costField) ? SUB_PLANS[provider].cost : costField;
+  const sessionPctField = parseFloat(document.getElementById('sSessionPct').value);
+  const sessionReset = document.getElementById('sSessionReset').value;
+  const weeklyPctField = parseFloat(document.getElementById('sWeeklyPct').value);
+  const weeklyReset = document.getElementById('sWeeklyReset').value;
 
   const data = load();
-  // Replace if same provider already exists
+  const existing = data.subscriptions.find(s => s.provider === provider);
+  const cost = isNaN(costField) ? (existing?.cost ?? SUB_PLANS[provider].cost) : costField;
+
+  const sub = {
+    id: existing?.id || Date.now(),
+    provider,
+    cost,
+    renewal: renewal || existing?.renewal,
+    sessionPct: isNaN(sessionPctField) ? existing?.sessionPct : sessionPctField,
+    sessionReset: sessionReset || existing?.sessionReset,
+    weeklyPct: isNaN(weeklyPctField) ? existing?.weeklyPct : weeklyPctField,
+    weeklyReset: weeklyReset || existing?.weeklyReset
+  };
+
   data.subscriptions = data.subscriptions.filter(s => s.provider !== provider);
-  data.subscriptions.push({ id: Date.now(), provider, cost, renewal });
+  data.subscriptions.push(sub);
   save(data);
 
-  document.getElementById('sCost').value = '';
-  document.getElementById('sRenewal').value = '';
+  ['sCost','sRenewal','sSessionPct','sSessionReset','sWeeklyPct','sWeeklyReset']
+    .forEach(id => document.getElementById(id).value = '');
 
-  showToast('Subscription saved ✓');
+  showToast('Subscription updated ✓');
   renderCards();
 }
 
