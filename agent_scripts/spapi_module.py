@@ -90,17 +90,16 @@ class SPAPIClient:
         doc_info = resp.json()
         url = doc_info["url"]
         compression = doc_info.get("compressionAlgorithm", "")
-        print(f"[SP-API] Compression: '{compression}', downloading...")
-        data_resp = requests.get(url)
+        # stream=False, don't let requests auto-decompress
+        data_resp = requests.get(url, stream=False)
         data_resp.raise_for_status()
-        print(f"[SP-API] Downloaded {len(data_resp.content)} bytes")
-        if compression == "GZIP":
-            return _gzip.decompress(data_resp.content).decode("utf-8")
-        # Try gzip anyway if content looks compressed
-        if data_resp.content[:2] == b'\x1f\x8b':
-            print("[SP-API] Auto-detected GZIP, decompressing...")
-            return _gzip.decompress(data_resp.content).decode("utf-8")
-        return data_resp.text
+        content = data_resp.content
+        print(f"[SP-API] {len(content)} bytes, compression={compression or 'none'}")
+        # Decompress if GZIP (check both field and magic bytes)
+        if compression == "GZIP" or content[:2] == b'\x1f\x8b':
+            content = _gzip.decompress(content)
+        # Decode, stripping BOM if present
+        return content.decode("utf-8-sig")
 
     def get_listings(self):
         """Returns {asin: {status, sku, title, qty}}"""
@@ -109,17 +108,11 @@ class SPAPIClient:
         doc_id = self._poll_report(report_id)
         raw = self._download_document(doc_id)
 
-        raw = raw.replace("\r\n", "\n").replace("\r", "\n")
+        raw = raw.replace(chr(13), "")  # strip \r
         reader = csv.DictReader(io.StringIO(raw), delimiter="\t")
-        # Debug: print actual column names on first run
-        fieldnames = reader.fieldnames
-        print(f"[SP-API] Listings columns: {fieldnames}")
-        asin_col = "asin1" if fieldnames and "asin1" in fieldnames else (
-            next((c for c in (fieldnames or []) if "asin" in c.lower()), "asin1")
-        )
         listings = {}
         for row in reader:
-            asin = row.get(asin_col, "").strip()
+            asin = row.get("asin1", "").strip()
             if asin:
                 listings[asin] = {
                     "status": row.get("status", "").strip(),
