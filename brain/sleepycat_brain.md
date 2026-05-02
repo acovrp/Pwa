@@ -123,6 +123,7 @@ Aman's single-file HTML command center, built personally and maintained by the a
 - Funnel data must decrease monotonically at every stage
 - Rate metrics (ACOS, CTR, CVR, TACoS) never summed across products
 - Read column headers from actual file before writing any parser — never assume
+- **Dropdown `value` must match `PRODUCTS[].line`, not `p.id` or the display name.** Before changing any dropdown value, grep `"line":"<value>"` in the PRODUCTS blob to confirm the match. The protector has `p.id="mattressprot"` but `p.line="mattress"` — this has caused two wrong edits already.
 - **Deploy flow**: edit `C:\Users\User\Downloads\pwa-push\index.html` → commit → push to `origin master` on `acovrp/sleepycat-dashboard`. The local remote was previously misconfigured to `Pwa`; it is now correctly set to `sleepycat-dashboard`. GitHub Pages serves from `master` (not `main`).
 
 ---
@@ -242,7 +243,7 @@ These are the decision categories where Aman moves fast, operates on instinct, a
 | Google Sheets | Search funnel data layer | 26 months BA data |
 | Brand Analytics | Search catalog performance | Monthly/weekly exports |
 | Snowflake | Ad spend data | ~62% coverage (known gap) |
-| Marketplace OS | Consolidated dashboard | v7.2, hosted at acovrp.github.io/Pwa/ |
+| Marketplace OS | Consolidated dashboard | v7.2, hosted at acovrp.github.io/sleepycat-dashboard/ |
 
 ### Agent Infrastructure
 - Agent runs at: `C:\Users\User\Downloads\sleepycat-agent\sleepycat-agent\`
