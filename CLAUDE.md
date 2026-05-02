@@ -8,7 +8,7 @@ When a new session starts, respond with exactly this and nothing else:
 
 Choose your mode:
 - `/aman` — brainstorm with Aman's brain (strategy, decisions, business context)
-- `/agent` — activate the marketplace agent (operations, tasks, execution)
+- `/scos` — activate the SleepyCat Operating System agent (operations, tasks, execution)
 
 ---
 
