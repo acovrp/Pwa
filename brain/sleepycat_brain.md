@@ -75,10 +75,10 @@ Aman leads 5 specialist roles. The agent does not manage them directly — it pr
 Aman's single-file HTML command center, built personally and maintained by the agent.
 
 **Current version: v7.2** (full audit + 30 bug fixes, May 2026; filter fixes May 2026)
-**Live URL: https://acovrp.github.io/sleepycat-dashboard/**
+**Live URL: https://acovrp.github.io/Pwa/**
 **Local file: `C:\Users\User\Downloads\pwa-push\index.html`**
-**GitHub repo: acovrp/sleepycat-dashboard** (GitHub Pages enabled, serves from `master` branch)
-**Note:** `acovrp/Pwa` is a separate repo that hosts the brain files only (not the dashboard)
+**GitHub repo: acovrp/Pwa** (single repo for everything — dashboard, brain files, agent context)
+**GitHub Pages serves from `main` branch**
 
 ### Architecture
 - Single HTML file, embedded JS + CSS
@@ -124,7 +124,7 @@ Aman's single-file HTML command center, built personally and maintained by the a
 - Rate metrics (ACOS, CTR, CVR, TACoS) never summed across products
 - Read column headers from actual file before writing any parser — never assume
 - **Dropdown `value` must match `PRODUCTS[].line`, not `p.id` or the display name.** Before changing any dropdown value, grep `"line":"<value>"` in the PRODUCTS blob to confirm the match. The protector has `p.id="mattressprot"` but `p.line="mattress"` — this has caused two wrong edits already.
-- **Deploy flow**: edit `C:\Users\User\Downloads\pwa-push\index.html` → commit → push to `origin master` on `acovrp/sleepycat-dashboard`. The local remote was previously misconfigured to `Pwa`; it is now correctly set to `sleepycat-dashboard`. GitHub Pages serves from `master` (not `main`).
+- **Deploy flow**: edit `C:\Users\User\Downloads\pwa-push\index.html` → commit → push to `origin main` on `acovrp/Pwa`. GitHub Pages serves from `main`.
 
 ---
 
@@ -243,7 +243,7 @@ These are the decision categories where Aman moves fast, operates on instinct, a
 | Google Sheets | Search funnel data layer | 26 months BA data |
 | Brand Analytics | Search catalog performance | Monthly/weekly exports |
 | Snowflake | Ad spend data | ~62% coverage (known gap) |
-| Marketplace OS | Consolidated dashboard | v7.2, hosted at acovrp.github.io/sleepycat-dashboard/ |
+| Marketplace OS | Consolidated dashboard | v7.2, hosted at https://acovrp.github.io/Pwa/ |
 
 ### Agent Infrastructure
 - Agent runs at: `C:\Users\User\Downloads\sleepycat-agent\sleepycat-agent\`
@@ -252,6 +252,7 @@ These are the decision categories where Aman moves fast, operates on instinct, a
 - Watch folder: `C:\Users\User\Documents\SleepyCat-Data`
 - GitHub CLI at: `C:\Program Files\GitHub CLI\gh.exe` (not in PATH for bash — use full path)
 - GitHub auth: logged in as `acovrp`
+- Single repo: `acovrp/Pwa` — dashboard, brain files, agent context all live here
 
 ---
 

@@ -30,11 +30,12 @@ From this point, behave according to `agent_context.md`. Use `sleepycat_brain.md
 
 ## Key Paths (for reference)
 
-- Dashboard (local): `C:\Users\User\Downloads\marketplace-os-v7.2.html`
+- Dashboard (local): `C:\Users\User\Downloads\pwa-push\index.html`
 - Dashboard (live): https://acovrp.github.io/Pwa/
 - Agent directory: `C:\Users\User\Downloads\sleepycat-agent\sleepycat-agent\`
-- Brain files (local): `agent\context\sleepycat_brain.md`
+- Brain files (local): `brain\sleepycat_brain.md`
 - Agent context (local): `AGENT_CONTEXT.md`
 - pwa repo (local): `C:\Users\User\Downloads\pwa-push\`
+- GitHub repo: `acovrp/Pwa` (single repo for everything)
 - GitHub CLI: `C:\Program Files\GitHub CLI\gh.exe`
 - Watch folder: `C:\Users\User\Documents\SleepyCat-Data`
