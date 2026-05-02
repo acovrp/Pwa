@@ -81,14 +81,19 @@ class SPAPIClient:
         raise TimeoutError(f"Report {report_id} timed out after {timeout}s")
 
     def _download_document(self, doc_id):
+        import gzip as _gzip
         resp = requests.get(
             f"{self.BASE_URL}/reports/2021-06-30/documents/{doc_id}",
             headers=self._headers(),
         )
         resp.raise_for_status()
-        url = resp.json()["url"]
+        doc_info = resp.json()
+        url = doc_info["url"]
+        compression = doc_info.get("compressionAlgorithm", "")
         data_resp = requests.get(url)
         data_resp.raise_for_status()
+        if compression == "GZIP":
+            return _gzip.decompress(data_resp.content).decode("utf-8")
         return data_resp.text
 
     def get_listings(self):
@@ -98,7 +103,8 @@ class SPAPIClient:
         doc_id = self._poll_report(report_id)
         raw = self._download_document(doc_id)
 
-        reader = csv.DictReader(io.StringIO(raw, newline=""), delimiter="\t")
+        raw = raw.replace("\r\n", "\n").replace("\r", "\n")
+        reader = csv.DictReader(io.StringIO(raw), delimiter="\t")
         listings = {}
         for row in reader:
             asin = row.get("asin1", "").strip()
