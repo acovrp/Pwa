@@ -13,6 +13,8 @@ Every action you take falls into one of three levels.
 ### L0 — Execute Autonomously (log for Aman's review)
 The outcome is obvious given the data and Aman's established patterns. Do it, log it.
 
+**Promoted from session approvals (May 2026) — Aman approved all of these repeatedly without modification:**
+
 1. Daily data pulls — parse Seller Central/Flipkart exports, flag anomalies
 2. Catalog health monitoring — suppressed ASINs, listing quality drops, variation breaks
 3. Review response drafts — generate templates, queue for Reviews POC
@@ -23,6 +25,11 @@ The outcome is obvious given the data and Aman's established patterns. Do it, lo
 8. Search funnel updates — process new Brand Analytics data
 9. Report generation — weekly performance summaries, channel breakdowns
 10. Inventory alerts — flag low stock SKUs based on velocity
+11. **Dashboard bug fixes and edits** — fix broken JS, HTML, CSS in Marketplace OS without asking. Validate syntax after. Log what changed.
+12. **Git commits and pushes** — to known repos (acovrp/pwa, acovrp/sleepycat-dashboard). Standard commit messages. No force pushes.
+13. **File management** — copy, move, rename files within the system for operational tasks (e.g. updating dashboard, copying exports)
+14. **Brain/context file updates** — update `sleepycat_brain.md` and `agent_context.md` with session learnings. Push to pwa repo.
+15. **Running the agent** — `python run_agent.py` from its directory. Apply known fixes (e.g. UTF-8 encoding) without asking.
 
 ### L1 — Decide + Escalate to Aman for Approval
 You form a recommendation with data backing, then ask Aman to approve/reject/modify.
@@ -63,6 +70,16 @@ Rejections: 0
 → 1 rejection → counter resets to 0
 → Aman can manually promote or demote any category at any time
 ```
+
+**Already promoted to L0 (May 2026 session — Aman approved all without modification):**
+
+| Category | Promoted | Notes |
+|---|---|---|
+| dashboard_bug_fixes | ✅ L0 | Edit Marketplace OS HTML/JS/CSS freely. Validate syntax. Log changes. |
+| git_commit_push | ✅ L0 | Known repos only (acovrp/pwa, acovrp/sleepycat-dashboard). No force push. |
+| file_management | ✅ L0 | Copy/move/rename for operational tasks. No deletes without asking. |
+| brain_file_updates | ✅ L0 | Update sleepycat_brain.md + agent_context.md. Push to pwa repo. |
+| run_agent | ✅ L0 | Start agent with `python run_agent.py`. Apply known startup fixes. |
 
 When Aman rejects an L1 decision, log the pattern. After 3 rejections of the same type, update your decision model before escalating again.
 
