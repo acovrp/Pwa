@@ -1592,6 +1592,7 @@ function handleUpload(type, inp) {
       markSlot(type, rows.length - 1, file.name);
       if (type === 'st') buildKeywordsFromRows(rows);
       if (type === 'br') processBusinessReport(rows);
+      if (type === 'sp') processSpReport(rows);
     } catch(err) { console.warn('Upload error:', err); }
   };
   reader.readAsText(file, 'UTF-8');
@@ -1799,6 +1800,54 @@ document.addEventListener('drop', function(e) {
 });
 
 
+
+function processSpReport(rows) {
+  var hs = rows[0].map(function(h) {
+    return h.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  });
+  function ci() {
+    var als = Array.prototype.slice.call(arguments);
+    for (var i = 0; i < als.length; i++) {
+      var j = hs.indexOf(als[i]); if (j >= 0) return j;
+    }
+    return -1;
+  }
+  var iDate  = ci('date', 'start_date');
+  var iSpend = ci('spend', 'cost');
+  var iSales = ci('14_day_total_sales_', '14_day_total_sales', '7_day_total_sales_', '7_day_total_sales', 'sales');
+
+  if (iSpend < 0) { console.warn('processSpReport: no spend column found in', hs); return; }
+
+  var MO = {'01':'jan','1':'jan','02':'feb','2':'feb','03':'mar','3':'mar',
+            '04':'apr','4':'apr','05':'may','5':'may','06':'jun','6':'jun',
+            '07':'jul','7':'jul','08':'aug','8':'aug','09':'sep','9':'sep',
+            '10':'oct','11':'nov','12':'dec'};
+  var spend = {}, sales = {};
+
+  for (var i = 1; i < rows.length; i++) {
+    var r = rows[i];
+    var sp = parseFloat((r[iSpend] || '0').replace(/[^\d.]/g, '')) || 0;
+    var sl = iSales >= 0 ? (parseFloat((r[iSales] || '0').replace(/[^\d.]/g, '')) || 0) : 0;
+    var mo = 'mar';
+    if (iDate >= 0 && r[iDate]) {
+      var d = r[iDate].trim();
+      var m1 = d.match(/^\d{4}-(\d{2})-\d{2}/);
+      var m2 = d.match(/^(\d{1,2})\/\d{1,2}\/\d{4}/);
+      var mNum = m1 ? m1[1] : (m2 ? m2[1] : null);
+      if (mNum && MO[mNum]) mo = MO[mNum];
+    }
+    spend[mo] = (spend[mo] || 0) + sp;
+    sales[mo] = (sales[mo] || 0) + sl;
+  }
+
+  Object.keys(spend).forEach(function(mo) {
+    if (!AD_SPEND[mo]) AD_SPEND[mo] = {sp: 0, sb: 0, sd: 0, total: 0};
+    AD_SPEND[mo].sp = spend[mo];
+    AD_SPEND[mo].total = AD_SPEND[mo].sp + AD_SPEND[mo].sb + AD_SPEND[mo].sd;
+  });
+
+  renderAmzKpi();
+}
 
 // SEARCH FUNNEL ENGINE
 var SF = {view: 'demand', cat: 'mattress', data: {}, dates: []};
