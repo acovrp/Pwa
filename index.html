@@ -1579,27 +1579,25 @@ renderOtherKpi();
 renderAll();
 
 // ── SP-API AUTO-LOAD ─────────────────────────────────────────
-// Tries to load br_history.csv from the local agent server on startup.
-// Agent must be running (localhost:8080). Silently skips if unavailable.
+// Tries relative URL first (Cloudflare Pages), then localhost (local agent).
 (function() {
-  fetch('http://localhost:8080/br_data.csv', {cache: 'no-store'})
-    .then(function(r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.text();
-    })
-    .then(function(text) {
-      var rows = csvParse(text);
-      if (rows.length < 2) return;
-      processBusinessReport(rows);
-      var sl = document.getElementById('uslot-br');
-      if (sl) sl.classList.add('ok');
-      var st = document.getElementById('ust-br');
-      if (st) st.textContent = '✓ Auto-loaded · ' + (rows.length - 1) + ' rows';
-      console.log('[SP-API] Auto-loaded br data: ' + (rows.length-1) + ' rows');
-    })
-    .catch(function() {
-      // Agent not running or file not ready — silent, user can drag-drop manually
-    });
+  var urls = ['./data/br_history.csv', 'http://localhost:8080/br_data.csv'];
+  function tryNext(i) {
+    if (i >= urls.length) return;
+    fetch(urls[i], {cache: 'no-store'})
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(function(text) {
+        var rows = csvParse(text);
+        if (rows.length < 2) return;
+        processBusinessReport(rows);
+        var sl = document.getElementById('uslot-br'); if (sl) sl.classList.add('ok');
+        var st = document.getElementById('ust-br');
+        if (st) st.textContent = '✓ Auto-loaded · ' + (rows.length - 1) + ' rows';
+        console.log('[SP-API] Auto-loaded ' + (rows.length-1) + ' rows from ' + urls[i]);
+      })
+      .catch(function() { tryNext(i + 1); });
+  }
+  tryNext(0);
 })();
 
 // ── UPLOAD HANDLER ──────────────────────────────────────────
