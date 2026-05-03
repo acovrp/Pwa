@@ -502,12 +502,12 @@ tbody tr.l3-row.open{display:table-row}
 <div id="tab-qcom" class="tab-content">
   <div class="kpi-row" id="qcom-kpi-row"></div>
   <div class="section-card">
-    <div class="section-hd"><div class="section-title">Dark Store Availability — Sampled Pin Codes</div><div style="font-size:11px;color:var(--text-secondary)">Bot · 2× daily · 6 metros</div></div>
+    <div class="section-hd"><div class="section-title">Dark Store Availability — Sampled Pin Codes</div></div>
     <div class="tbl-wrap" id="qcom-avail-tbl"></div>
   </div>
   <div class="section-card">
     <div class="section-hd"><div class="section-title">QCom · Product Trend</div></div>
-    <div style="padding:40px;text-align:center;color:var(--text-secondary);font-size:12px">Connect Blinkit / Zepto / Swiggy bots to populate product-level data</div>
+    <div style="padding:40px;text-align:center;color:var(--text-secondary);font-size:12px">TBD</div>
   </div>
 </div>
 
@@ -517,7 +517,7 @@ tbody tr.l3-row.open{display:table-row}
 <div id="tab-other" class="tab-content">
   <div class="kpi-row" id="other-kpi-row"></div>
   <div class="section-card">
-    <div style="padding:40px;text-align:center;color:var(--text-secondary)">Meesho · Myntra · D2C — Connect APIs to populate</div>
+    <div style="padding:40px;text-align:center;color:var(--text-secondary);font-size:12px">TBD</div>
   </div>
 </div>
 
@@ -599,22 +599,9 @@ var KEYWORDS = [{"kw":"mattress king size 78x72","seg":"generic","vol":171370,"s
 
 var FUNNELS = {"branded":{"search":100,"imp":44.34,"click":38.5,"atc":32.1,"purchase":28.8,"prev":{"imp":52.1,"click":45.0,"atc":38.1,"purchase":32.6}},"generic":{"search":100,"imp":5.21,"click":3.8,"atc":2.6,"purchase":1.9,"prev":{"imp":4.8,"click":4.7,"atc":3.1,"purchase":1.87}},"comp":{"search":100,"imp":3.2,"click":2.1,"atc":1.4,"purchase":0.8,"prev":{"imp":5.9,"click":5.2,"atc":3.8,"purchase":5.4}}};
 
-var QCOM_AVAIL = [
-  {city:'Mumbai — Andheri',blinkit:'oos',zepto:'in',swiggy:'in'},
-  {city:'Mumbai — Powai',blinkit:'in',zepto:'in',swiggy:'oos'},
-  {city:'Delhi — CP',blinkit:'in',zepto:'in',swiggy:'in'},
-  {city:'Delhi — Gurgaon',blinkit:'low',zepto:'in',swiggy:'in'},
-  {city:'Bengaluru — Koramangala',blinkit:'in',zepto:'low',swiggy:'in'},
-  {city:'Bengaluru — Whitefield',blinkit:'in',zepto:'oos',swiggy:'low'}
-];
+var QCOM_AVAIL = [];
 
-var FLAGS = [
-  {id:'f1',sev:'r',label:'🔴 HL FBA: 3d stock · Ads running',impact:'~₹1.2L/day',since:'2 days ago',root:'FBA inventory at 3 days cover. Daily burn 42 units. 3 campaigns spending ₹8K/day still active.',actions:['Raise replenishment PO — 300 units min','Cap campaign budgets to ₹2K/day until stock arrives','If ETA >5 days, pause SP campaigns on top generic keywords']},
-  {id:'f2',sev:'r',label:'🔴 HL 78×72×5" on "mattress king": Score 12/100',impact:'₹200/day, CVR 0.3%',since:'4 days ago',root:'MFN-only SKU, 8d delivery competing on keyword where 8" FBA delivers in 2d. CVR gap = 7×. Every impression on 5" displaces a faster sibling.',actions:['Pause 5" SKU from mattress king campaign','Negative-match this ASIN from ad group','Reallocate ₹200/day to 8" ASIN']},
-  {id:'f3',sev:'y',label:'🟡 FK organic share: 7.7% vs 40.6% bench',impact:'~₹45L revenue gap',since:'6 weeks ago',root:'Organic share collapsed from 40.6% to 7.7% over 6 weeks. CTR improving post strategy change but CVR stuck at 0.56%.',actions:['Audit FK listing quality scores','Check variation breaks causing canonical URL issues','Review keyword targeting — possible over-reliance on PLA']},
-  {id:'f4',sev:'y',label:'🟡 Latex kw imp share: 13.8% ↓ from 21%',impact:'Visibility declining',since:'3 weeks ago',root:'Impression share on latex keywords dropped from 21% to 13.8% over 3 weeks following TOS bid reduction from 200% to 100%.',actions:['Monitor 2 more weeks — action was intentional','If purchase share drops below 20% reconsider','Track competitor impression share on latex keywords']},
-  {id:'f5',sev:'g',label:'✅ Brand purchase share: 84.6% — holding',impact:'Strong defense',since:'',root:'Brand keyword purchase share remains above 84% consistently. Brand well-defended.',actions:['No immediate action needed','Continue brand keyword bid monitoring weekly']}
-];
+var FLAGS = [];
 
 // ── Initialize missing month keys in pre-loaded PRODUCTS data ──
 (function(){
@@ -908,6 +895,7 @@ function getProds() {
 // ══════════════════════════════════════════════
 function renderFlags() {
   var bar = document.getElementById('flag-bar');
+  if (!FLAGS.length) { bar.innerHTML = '<span style="font-size:11px;color:#92400e;font-weight:600">No active flags</span>'; return; }
   var html = '<strong style="font-size:11px;color:#92400e;margin-right:4px;white-space:nowrap">🚨 ACTIVE FLAGS</strong>';
   FLAGS.forEach(function(f) {
     html += '<span class="flag-chip '+f.sev+'" onclick="openFlag(\''+f.id+'\')">'+f.label+'</span>';
@@ -1065,18 +1053,18 @@ function renderFlkKpi(){
 }
 function renderQcomKpi(){
   document.getElementById('qcom-kpi-row').innerHTML=
-    kpiCard('Blinkit','₹0.6L','↑ +8% WoW · 67 units','#28a745',null)+
-    kpiCard('Zepto','₹0.4L','↑ +2% WoW · 43 units','#a855f7',null)+
-    kpiCard('Swiggy IM','₹0.2L','↑ +15% WoW · 28 units','#ff7043',null)+
-    kpiCard('QCom Total','₹1.2L','↑ +8% WoW · 138 units','#4C72B0',null);
+    kpiCard('Blinkit','TBD','No data connected','#28a745',null)+
+    kpiCard('Zepto','TBD','No data connected','#a855f7',null)+
+    kpiCard('Swiggy IM','TBD','No data connected','#ff7043',null)+
+    kpiCard('QCom Total','TBD','No data connected','#4C72B0',null);
 }
 
 function renderOtherKpi(){
   document.getElementById('other-kpi-row').innerHTML=
-    kpiCard('Meesho','₹0.3L','↑ +5% WoW','#4C72B0',null)+
-    kpiCard('Myntra','₹0.1L','— WoW','#e91e8c',null)+
-    kpiCard('D2C / Other','₹0.2L','↑ +3% WoW','#6c757d',null)+
-    kpiCard('Other Total','₹0.6L','↑ +4% WoW','#4C72B0',null);
+    kpiCard('Meesho','TBD','No data connected','#4C72B0',null)+
+    kpiCard('Myntra','TBD','No data connected','#e91e8c',null)+
+    kpiCard('D2C / Other','TBD','No data connected','#6c757d',null)+
+    kpiCard('Other Total','TBD','No data connected','#4C72B0',null);
 }
 
 // ══════════════════════════════════════════════
@@ -1470,6 +1458,7 @@ function toggleKwL2(ki, pi, e) {
 function renderQcom(){
   var el=document.getElementById('qcom-avail-tbl'); if(!el) return;
   var dot={in:'<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:9px;font-size:11px;font-weight:600">● In Stock</span>',oos:'<span style="background:#fee2e2;color:#b91c1c;padding:2px 8px;border-radius:9px;font-size:11px;font-weight:600">OOS</span>',low:'<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:9px;font-size:11px;font-weight:600">Low Stock</span>'};
+  if (!QCOM_AVAIL.length) { el.innerHTML='<div style="padding:32px;text-align:center;color:var(--text-secondary);font-size:12px">No availability data — connect Blinkit / Zepto / Swiggy feeds to populate</div>'; return; }
   var html='<table><thead><tr><th>City / Pin Code</th><th>Blinkit</th><th>Zepto</th><th>Swiggy IM</th></tr></thead><tbody>';
   QCOM_AVAIL.forEach(function(r){html+='<tr><td>'+r.city+'</td><td>'+dot[r.blinkit]+'</td><td>'+dot[r.zepto]+'</td><td>'+dot[r.swiggy]+'</td></tr>';});
   html+='</tbody></table>';
