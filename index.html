@@ -206,7 +206,7 @@ tbody tr.l3-row.open{display:table-row}
     <div class="logo-mark">S</div>
     <div>
       <h1>Marketplace OS &nbsp;·&nbsp; SleepyCat</h1>
-      <div class="subtitle">Amazon · Flipkart · Blinkit · Zepto · Swiggy IM &nbsp;|&nbsp; Live data · Jan–Mar 2026 · AMZ ₹14.2Cr + FK ₹7.4Cr</div>
+      <div class="subtitle" id="hdr-subtitle">Amazon · Flipkart · QCom &nbsp;|&nbsp; Loading data…</div>
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -289,7 +289,7 @@ tbody tr.l3-row.open{display:table-row}
       </div>
       <input type="file" accept=".csv,.tsv" id="u-ret" style="display:none" onchange="handleUpload('ret',this)">
     </div>
-    <span class="dsb dsb-live" id="dsb">✅ Live · Jan–Mar 2026</span>
+    <span class="dsb dsb-live" id="dsb">No data loaded</span>
   </div>
 </div>
 
@@ -993,6 +993,26 @@ function getAmzSpendByMo(mo,prods){
   },0);
 }
 
+function updateHeaderStats() {
+  var mos=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  var moLabel={jan:'Jan',feb:'Feb',mar:'Mar',apr:'Apr',may:'May',jun:'Jun',jul:'Jul',aug:'Aug',sep:'Sep',oct:'Oct',nov:'Nov',dec:'Dec'};
+  var amzRev=0,fkRev=0,firstMo=null,lastMo=null;
+  mos.forEach(function(m){
+    var has=false;
+    PRODUCTS.forEach(function(p){
+      var a=(p.channels.amz||{}).revenue||{},f=(p.channels.flk||{}).revenue||{};
+      var av=(a[m]||[]).reduce(function(s,v){return s+(v||0);},0);
+      var fv=(f[m]||[]).reduce(function(s,v){return s+(v||0);},0);
+      if(av>0||fv>0){has=true;amzRev+=av;fkRev+=fv;}
+    });
+    if(has){if(!firstMo)firstMo=m;lastMo=m;}
+  });
+  var el=document.getElementById('hdr-subtitle'); if(!el) return;
+  if(!firstMo){el.textContent='Amazon · Flipkart · QCom | No data loaded';return;}
+  var range=firstMo===lastMo?moLabel[firstMo]+' 2026':moLabel[firstMo]+'–'+moLabel[lastMo]+' 2026';
+  el.textContent='Amazon · Flipkart · QCom | '+range+' · AMZ '+fmtV(amzRev,'revenue')+' · FK '+fmtV(fkRev,'revenue');
+}
+
 function renderOvKpi(){
   var fp=getProds(),isF=S.cat!=='all';
   var jan=getAllRevByMo('jan',fp),feb=getAllRevByMo('feb',fp),mar=getAllRevByMo('mar',fp),apr=getAllRevByMo('apr',fp),may=getAllRevByMo('may',fp);
@@ -1002,8 +1022,9 @@ function renderOvKpi(){
   var allRev=jan+feb+mar+apr+may;
   var blTacos=(allRev>0?allSp/allRev*100:0).toFixed(1);
   var mayOrg=(function(){var v=[];fp.forEach(function(p){['amz','flk'].forEach(function(ch){((p.channels[ch]||{}).organic_pct||{}).may&&(p.channels[ch].organic_pct.may||[]).forEach(function(x){if(x!==null)v.push(x);});});});return v.length?v.reduce(function(a,b){return a+b;},0)/v.length:0;})();
+  updateHeaderStats();
   document.getElementById('ov-kpi-row').innerHTML=
-    kpiCard('Revenue (JFMAM)',fmtV(allRev,'revenue'),'Jan–May 2026','#ff9900',null)+
+    kpiCard('Revenue (JFMAM)',fmtV(allRev,'revenue'),jan>0&&may>0?'Jan–May 2026':jan>0&&apr>0?'Jan–Apr 2026':jan>0&&mar>0?'Jan–Mar 2026':'loaded data','#ff9900',null)+
     kpiCard('Mar Revenue',fmtV(mar,'revenue'),fmtV(getAllSpendByMo('mar',fp),'revenue')+' spend','#ff9900',null)+
     kpiCard('Apr Revenue',fmtV(apr,'revenue'),fmtV(getAllSpendByMo('apr',fp),'revenue')+' spend','#9d7ff4',null)+
     kpiCard('May Revenue (MTD)',fmtV(may,'revenue'),'partial · '+(lw>pw?'↑ +':lw<pw?'↓ ':'')+Math.abs(wow)+'% WoW','#4C72B0',null)+
@@ -1607,6 +1628,23 @@ renderAll();
       .catch(function() { tryNext(i + 1); });
   }
   tryNext(0);
+})();
+
+// ── ST AUTO-LOAD ─────────────────────────────────────────────
+// Loads st_report.csv pushed by run_spapi.py when user drops ST CSV in watch folder.
+(function() {
+  fetch('./data/st_report.csv', {cache: 'no-store'})
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+    .then(function(text) {
+      var rows = csvParse(text);
+      if (rows.length < 2) return;
+      buildKeywordsFromRows(rows);
+      var sl = document.getElementById('uslot-st'); if (sl) sl.classList.add('ok');
+      var st = document.getElementById('ust-st');
+      if (st) st.textContent = '✓ Auto-loaded · ' + (rows.length - 1) + ' rows';
+      console.log('[ST] Auto-loaded ' + (rows.length-1) + ' rows from st_report.csv');
+    })
+    .catch(function() { /* no st_report.csv yet */ });
 })();
 
 // ── UPLOAD HANDLER ──────────────────────────────────────────
