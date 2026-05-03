@@ -450,6 +450,7 @@ tbody tr.l3-row.open{display:table-row}
       <div>
         <div class="section-title">Amazon · Keyword Intelligence
           <span style="font-size:11px;font-weight:400;color:var(--text-secondary);margin-left:6px">SOV tracker + 3-level drill-down: Keyword → Product → SKU</span>
+          <span id="kw-date-range" style="font-size:11px;font-weight:600;color:#15803d;margin-left:8px"></span>
         </div>
         <div class="section-desc">
           Sorted high→low by spend (click any column header to resort). Imp share shown W1→LW with WoW delta inline.
@@ -1738,7 +1739,8 @@ function buildKeywordsFromRows(rows) {
   var iSp = ci('spend', 'cost');
   var iSl = ci('14_day_total_sales_', '14_day_total_sales', 'sales');
   var iOr = ci('14_day_total_orders_', '14_day_total_orders', 'orders');
-  var map = {};
+  var iDt = ci('date', 'report_date', 'start_date', 'week_starting', 'week_ending');
+  var map = {}, minDate = '', maxDate = '';
   for (var i = 1; i < rows.length; i++) {
     var r = rows[i];
     var term = (r[iT] || '').trim(); if (!term) continue;
@@ -1748,6 +1750,10 @@ function buildKeywordsFromRows(rows) {
     var sl = parseFloat((r[iSl] || '0').replace(/[^\d.]/g, '')) || 0;
     var or2 = parseFloat((r[iOr] || '0').replace(/[^\d.]/g, '')) || 0;
     var mt = (r[iM] || '').trim();
+    if (iDt >= 0) {
+      var dv = (r[iDt] || '').trim();
+      if (dv) { if (!minDate || dv < minDate) minDate = dv; if (!maxDate || dv > maxDate) maxDate = dv; }
+    }
     if (!map[term]) map[term] = { kw: term, seg: 'generic', spend: 0, im: 0, cl: 0, sl: 0, or2: 0, mt: mt };
     map[term].spend += sp; map[term].im += im; map[term].cl += cl;
     map[term].sl += sl; map[term].or2 += or2;
@@ -1779,6 +1785,16 @@ function buildKeywordsFromRows(rows) {
       products: []
     };
   });
+  window.KEYWORDS_META = { from: minDate, to: maxDate, rows: rows.length - 1 };
+  var kwDr = document.getElementById('kw-date-range');
+  if (kwDr) {
+    if (minDate && maxDate) {
+      var fmtD = function(s) { var d = new Date(s + 'T00:00:00'); return d.toLocaleString('en',{month:'short'}).substring(0,3)+"'"+String(d.getFullYear()).slice(2); };
+      kwDr.textContent = '· ' + fmtD(minDate) + (minDate !== maxDate ? ' – ' + fmtD(maxDate) : '') + ' · ' + (rows.length - 1) + ' rows';
+    } else {
+      kwDr.textContent = '· ' + (rows.length - 1) + ' rows';
+    }
+  }
   renderKwTable();
 }
 
@@ -2273,7 +2289,7 @@ function sfDemand(el, ds, ld, pd, lt) {
   var c = ld.by_cat[cat] || z;
   var pc = (pd && pd.by_cat[cat]) ? pd.by_cat[cat] : z;
   document.getElementById('sf-section-title').textContent = 'Category demand — ' + cat;
-  document.getElementById('sf-section-desc').textContent = ds.length + ' periods | BA Search Catalog Performance | Brand = SleepyCat';
+  document.getElementById('sf-section-desc').textContent = ds.length + ' periods (' + sfLbl(ds[0]) + ' → ' + sfLbl(ds[ds.length-1]) + ') | BA Search Catalog Performance | Brand = SleepyCat';
   document.getElementById('sf-kpi-row').innerHTML =
     kpiCard('SQV (' + sfLbl(lt) + ')', sfFmt(c.sqv), 'search volume' + sfChgB(sfChg(c.sqv, pc.sqv)), '#7F77DD') +
     kpiCard('Total Impressions', sfFmt(c.it), 'category total' + sfChgB(sfChg(c.it, pc.it)), '#4C72B0') +
@@ -2498,7 +2514,7 @@ handleUpload = function(type, inp) {
         if (loaded >= total) {
           markSlot('ba', totalN, 'BA Search Funnel');
           var stEl = document.getElementById('sf-status');
-          if (stEl) stEl.textContent = 'Loaded ' + totalN + ' rows | ' + SF.dates.length + ' periods';
+          if (stEl) stEl.textContent = 'Loaded ' + totalN + ' rows | ' + SF.dates.length + ' periods (' + sfLbl(SF.dates[0]) + ' → ' + sfLbl(SF.dates[SF.dates.length-1]) + ')';
           sfRender();
         }
       };
@@ -2517,7 +2533,7 @@ SF.data = SF_SEED;
 SF.dates = Object.keys(SF.data).sort();
 (function() {
   var stEl = document.getElementById('sf-status');
-  if (stEl) stEl.textContent = 'Pre-loaded | ' + SF.dates.length + ' periods (Jan 2024 - Feb 2026)';
+  if (stEl) stEl.textContent = 'Pre-loaded | ' + SF.dates.length + ' periods (' + sfLbl(SF.dates[0]) + ' → ' + sfLbl(SF.dates[SF.dates.length-1]) + ')';
   markSlot('ba', 26000, 'BA 26mo pre-loaded');
   sfRender();
 })();
