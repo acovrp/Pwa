@@ -74,7 +74,7 @@ Aman leads 5 specialist roles. The agent does not manage them directly — it pr
 
 Aman's single-file HTML command center, built personally and maintained by the agent.
 
-**Current version: v7.2** (full audit + 30 bug fixes, May 2026; filter fixes May 2026)
+**Current version: v7.3** (full audit + 30 bug fixes, May 2026; filter fixes May 2026; all upload processors wired May 2026)
 **Live URL (team, auth-gated): https://scos.aman-verma-741.workers.dev/** — Cloudflare Pages + Cloudflare Access, Google login required, `@sleepycat.in` domain whitelisted, external stakeholders added manually
 **Live URL (public, no auth): https://acovrp.github.io/Pwa/** — GitHub Pages, still live
 **Local file: `C:\Users\User\Downloads\pwa-push\index.html`**
@@ -85,7 +85,9 @@ Aman's single-file HTML command center, built personally and maintained by the a
 - Single HTML file, embedded JS + CSS
 - Data via CSV uploads from Seller Central, Flipkart, Brand Analytics
 - Design system: Kanishk's S&OP light theme
-- 11 upload slots total, all with active processors: `br` (units/revenue/sessions via ASIN_MAP), `st` (keywords), `ba` (search funnel), `sp` (AMZ adspend/ACOS/TACoS via ASIN_MAP), `sb`/`sd` (total spend → `window.UPLOADED_TOTALS.sb/sd`), `fk` (FK units/revenue via FK_NAME_MAP title matching), `fkads` (FK total spend → `window.UPLOADED_TOTALS.fkads`), `inv` (stock levels → `window.INVENTORY`), `ret` (returns by reason → `window.RETURNS`), `pp` (raw rows → `window.PURCHASE_DATA`).
+- 11 upload slots, all active: `br` (AMZ units/revenue/sessions via ASIN_MAP), `st` (keywords), `ba` (search funnel), `sp` (AMZ adspend/ACOS/TACoS via ASIN_MAP), `sb`/`sd` (total spend → `UPLOADED_TOTALS.sb/sd`), `fk` (FK units/revenue via FK_NAME_MAP title matching → `PRODUCTS.flk.units/revenue`), `fkads` (FK ad spend → `UPLOADED_TOTALS.fkads` + per-product `PRODUCTS.flk.adspend.recent` + `PRODUCTS.flk.tacos.recent`; re-renders FK KPI + tables), `inv` (stock levels → `window.INVENTORY`), `ret` (returns → `window.RETURNS`), `pp` (raw rows → `window.PURCHASE_DATA`).
+- FK tab KPI row: FK Revenue, Mar, Apr, May MTD, **FK Ad Spend** (live after fkads upload), **FK TACoS** (live after fkads upload). TACoS card goes red if >15%.
+- FK product table metric tabs: Gross Units, GMV, **Ad Spend**, **TACoS** (last two active after fkads upload).
 - Channels: Amazon, Flipkart, Quick Commerce, Other, Search Funnel tab
 
 ### ID Scheme (critical — causes bugs if confused)
@@ -102,6 +104,12 @@ Aman's single-file HTML command center, built personally and maintained by the a
 | Brand Analytics (Search Catalog Performance) | Search funnel — impression/click/ATC/purchase share |
 | Flipkart Sales export | Units, GMV, returns |
 | Snowflake | Ad spend (SP ASIN coverage ~62% due to keyword-level vs product-ad-level row mixing) |
+
+### Changes in v7.3 (May 2026)
+- All 7 previously unhooked upload processors now called from `handleUpload`: `fk`, `fkads`, `sb`, `sd`, `pp`, `inv`, `ret`
+- `processFkAdsReport` now writes per-product adspend + TACoS to `PRODUCTS.flk` and re-renders
+- FK KPI row: replaced hardcoded Cancel Rate/FBF Share with live FK Ad Spend + FK TACoS cards
+- FK product table: added Ad Spend and TACoS metric tabs
 
 ### Bugs fixed in v7.2 (reference — don't re-introduce)
 - setFunnel() now scoped to `.funnel-type-nav .ftn-btn` (was corrupting SF tab active states)

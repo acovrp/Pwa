@@ -143,7 +143,7 @@ When brain is updated:
 - Confirmed present in `agent/core.py` (lines 477–519) — appends content to brain file, requires y/n approval, then git pushes
 
 ### Dashboard (index.html)
-- Version: v7.2
+- Version: v7.3
 - ID scheme: `PRODUCTS[].line` = 8-char, dropdown values must match `.line` not `.id`
 - Line 588 is 42KB minified JSON — don't edit that line
 - Always syntax-check after JS edits: extract script, run `node --check`
