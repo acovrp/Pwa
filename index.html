@@ -535,6 +535,7 @@ tbody tr.l3-row.open{display:table-row}
     <button class="ftn-btn" onclick="setSfView('leakage',this)">Conversion Leakage</button>
     <button class="ftn-btn" onclick="setSfView('brands',this)">Brand Momentum</button>
     <button class="ftn-btn" onclick="setSfView('keywords',this)">Keyword Deep-Dive</button>
+    <button class="ftn-btn" id="sqp-btn" onclick="setSfView('sqp',this)" style="border-color:#7F77DD;color:#7F77DD">SC Weekly Trend</button>
   </div>
   <div style="display:flex;gap:4px;margin-bottom:var(--gap)" id="sf-cat-filter"></div>
   <div class="kpi-row" id="sf-kpi-row"></div>
@@ -1631,8 +1632,26 @@ renderAll();
   tryNext(0);
 })();
 
+// ── BA SQP AUTO-LOAD ──────────────────────────────────────────
+var BA_SQP = null;
+(function() {
+  fetch('./data/ba_sqp.json', {cache: 'no-store'})
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(data) {
+      BA_SQP = data;
+      var btn = document.getElementById('sqp-btn');
+      if (btn) btn.textContent = 'SC Weekly Trend ✓';
+      var stEl = document.getElementById('sf-status');
+      if (stEl && !stEl.textContent) {
+        var n = (data.terms || []).length;
+        stEl.textContent = 'BA SQP auto-loaded · ' + n + ' terms · ' + (data.month || data.generated || '');
+      }
+      console.log('[BA SQP] Auto-loaded ' + (data.terms||[]).length + ' terms');
+    })
+    .catch(function() { /* no ba_sqp.json yet */ });
+})();
+
 // ── ST AUTO-LOAD ─────────────────────────────────────────────
-// Loads st_report.csv pushed by run_spapi.py when user drops ST CSV in watch folder.
 (function() {
   fetch('./data/st_report.csv', {cache: 'no-store'})
     .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
@@ -2263,6 +2282,16 @@ function sfRender() {
   var el = document.getElementById('sf-main-tbl');
   if (!el) return;
   var emp = document.getElementById('sf-empty');
+
+  // SQP Weekly Trend view — uses BA_SQP data, independent of SF.dates
+  if (SF.view === 'sqp') {
+    if (emp) emp.style.display = 'none';
+    document.getElementById('sf-kpi-row').innerHTML = '';
+    document.getElementById('sf-cat-filter').innerHTML = '';
+    sfSqpTrend(el);
+    return;
+  }
+
   if (!SF.dates.length) {
     if (emp) emp.style.display = 'block';
     el.innerHTML = '';
@@ -2281,6 +2310,113 @@ function sfRender() {
   else if (SF.view === 'leakage') sfLeakage(el, ds, ld, pd, lt);
   else if (SF.view === 'brands') sfBrands(el, ds);
   else if (SF.view === 'keywords') sfKeywords(el, ds);
+}
+
+var SQP_METRIC = 'imp'; // active metric tab: imp | click | purchase
+
+function sfSqpTrend(el) {
+  var title = document.getElementById('sf-section-title');
+  var desc = document.getElementById('sf-section-desc');
+  if (title) title.textContent = 'SleepyCat · Search Query Performance Trend';
+  if (!BA_SQP) {
+    if (desc) desc.textContent = 'Not loaded — runs automatically at 7:30 AM via agent';
+    el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-secondary);font-size:13px">BA SQP data not yet available.<br>It auto-loads once the daily agent runs and pushes ba_sqp.json.</div>';
+    return;
+  }
+  var terms = BA_SQP.terms || [];
+  var weeks = BA_SQP.weeks || [];
+  var month = BA_SQP.month || '';
+  var q = ((document.getElementById('sf-kw-search') || {}).value || '').trim().toLowerCase();
+  if (q) terms = terms.filter(function(t){ return t.term.toLowerCase().indexOf(q) >= 0; });
+
+  var wLbls = weeks.map(function(w) {
+    var d = new Date(w + 'T00:00:00');
+    return d.toLocaleString('en', {month:'short'}).substring(0,3) + ' ' + d.getDate();
+  });
+
+  // KPI: monthly totals for top metric
+  var mKey = SQP_METRIC === 'imp' ? 'imp' : SQP_METRIC === 'click' ? 'click' : 'purchase';
+  var mLabel = SQP_METRIC === 'imp' ? 'Imp Share' : SQP_METRIC === 'click' ? 'Click Share' : 'Purch Share';
+  var mUnit = '%';
+
+  // Metric tabs
+  function mTab(id, label) {
+    return '<button onclick="SQP_METRIC=\''+id+'\';sfSqpTrend(document.getElementById(\'sf-main-tbl\'))" '+
+      'style="padding:4px 12px;border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;font-weight:600;margin-right:4px;'+
+      (SQP_METRIC===id?'background:#7F77DD;color:#fff;border-color:#7F77DD':'background:#f8fafc;color:var(--text-secondary)')+
+      '">'+label+'</button>';
+  }
+
+  if (desc) desc.innerHTML =
+    (month ? '<span style="color:var(--text-secondary)">Month: ' + month + '</span> &nbsp;·&nbsp; ' : '') +
+    (weeks.length ? wLbls[0] + ' → ' + wLbls[wLbls.length-1] + ' &nbsp;·&nbsp; ' : '') +
+    terms.length + ' terms &nbsp;&nbsp; ' +
+    mTab('imp','Imp Share') + mTab('click','Click Share') + mTab('purchase','Purch Share');
+
+  if (!terms.length) {
+    el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-secondary)">No terms match filter</div>';
+    return;
+  }
+
+  // Sort by LW value of selected metric descending
+  terms = terms.slice().sort(function(a, b) {
+    var aW = a.weekly || [], bW = b.weekly || [];
+    var av = aW.length ? (aW[aW.length-1][mKey] || 0) : ((a.monthly || {})[mKey] || 0);
+    var bv = bW.length ? (bW[bW.length-1][mKey] || 0) : ((b.monthly || {})[mKey] || 0);
+    return bv - av;
+  });
+
+  function wkTd(cur, prev) {
+    var d = prev !== null ? (cur - prev).toFixed(1) : null;
+    var ac = d !== null ? (parseFloat(d) > 0 ? '#065f46' : parseFloat(d) < 0 ? '#b91c1c' : '#6c757d') : '';
+    var bg = d !== null ? (parseFloat(d) > 0 ? '#d1fae5' : parseFloat(d) < 0 ? '#fee2e2' : '') : '';
+    return '<td style="text-align:right;white-space:nowrap">' + cur.toFixed(1) + mUnit +
+      (d !== null && d != '0.0' ? '<br><span style="font-size:9px;padding:0 4px;border-radius:6px;background:' + bg + ';color:' + ac + '">' + (parseFloat(d)>0?'+':'') + d + 'pp</span>' : '') +
+      '</td>';
+  }
+
+  var h = '<table><colgroup><col style="min-width:200px"><col style="width:90px"><col style="width:50px">';
+  weeks.forEach(function() { h += '<col style="width:80px">'; });
+  h += '<col style="width:80px"><col style="width:80px"></colgroup>';
+  h += '<thead><tr>';
+  h += '<th>Search Term</th><th>Category</th><th style="text-align:right">Rank</th>';
+  weeks.forEach(function(w, i) {
+    var lbl = i === 0 ? 'W-' + (weeks.length - 1) : i === weeks.length - 1 ? 'LW' : 'W-' + (weeks.length - 1 - i);
+    h += '<th style="text-align:right' + (i===0?';border-left:2px solid #e5e7eb':'') + '">' + lbl + '<br><span style="font-size:10px;font-weight:400">' + wLbls[i] + '</span></th>';
+  });
+  if (!weeks.length) h += '<th style="text-align:right">Monthly</th>';
+  h += '<th style="text-align:right">Monthly<br>' + mLabel + '</th>';
+  h += '</tr></thead><tbody>';
+
+  terms.slice(0, 50).forEach(function(t) {
+    var wks = t.weekly || [];
+    // Pad to weeks.length if some periods missing
+    var wkVals = weeks.map(function(w) {
+      var found = null;
+      for (var i = 0; i < wks.length; i++) { if (wks[i].period === w) { found = wks[i]; break; } }
+      return found ? found[mKey] : null;
+    });
+    var mo = t.monthly ? t.monthly[mKey] : null;
+
+    h += '<tr>';
+    h += '<td style="font-weight:500">' + t.term + (t.dept ? '' : '') + '</td>';
+    h += '<td style="font-size:11px;color:var(--text-secondary)">' + (t.dept || '—') + '</td>';
+    h += '<td style="text-align:right;font-size:11px">' + (t.rank || '—') + '</td>';
+    wkVals.forEach(function(v, i) {
+      if (v === null) {
+        h += '<td style="text-align:right' + (i===0?';border-left:2px solid #e5e7eb':'') + ';color:#9ca3af">—</td>';
+      } else {
+        var prev = i > 0 ? wkVals[i-1] : null;
+        h += (i===0 ? '<td style="text-align:right;border-left:2px solid #e5e7eb">' + v.toFixed(1) + mUnit + '</td>' : wkTd(v, prev));
+      }
+    });
+    if (!weeks.length) h += '<td style="text-align:right">' + (mo !== null ? mo.toFixed(1) + mUnit : '—') + '</td>';
+    h += '<td style="text-align:right;font-weight:600;color:#7F77DD">' + (mo !== null ? mo.toFixed(1) + mUnit : '—') + '</td>';
+    h += '</tr>';
+  });
+
+  h += '</tbody></table>';
+  el.innerHTML = h;
 }
 
 function sfDemand(el, ds, ld, pd, lt) {
