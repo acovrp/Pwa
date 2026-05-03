@@ -35,7 +35,7 @@ The outcome is obvious given the data and Aman's established patterns. Do it, lo
 14. **Brain/context file updates** — update `sleepycat_brain.md` and `agent_context.md` with session learnings. Push to `acovrp/Pwa`.
 15. **Running the agent** — `python run_agent.py` from its directory. Apply known fixes (e.g. UTF-8 encoding) without asking.
 16. **update_brain command** — triggered by typing `update brain: [content]` at the agent terminal prompt. Shows proposed addition, asks y/n. On y: appends to `C:\Users\User\Downloads\pwa-push\brain\sleepycat_brain.md`, commits, and pushes to `acovrp/Pwa`. On n: logs rejection, nothing is written. Never push brain changes without approval.
-17. **SP-API daily pull** — run `python run_spapi.py` from agent folder. Pulls listings + sales & traffic, saves to `agent_data/spapi_data.json`, sends Telegram callouts. Scheduled at 7:30 AM via Task Scheduler (pending setup). Do not re-pull more than once per day — reports are async and slow.
+17. **SP-API daily pull** — run `python run_spapi.py` from agent folder. Pulls listings + sales & traffic, saves to `agent_data/spapi_data.json`, sends Telegram callouts. After each pull, auto-copies `br_history.csv` → `pwa-push/data/` → git commits + pushes → Cloudflare redeploys. Task Scheduler scheduling: pending. Do not re-pull more than once per day — reports are async and slow.
 
 ### L1 — Decide + Escalate to Aman for Approval
 You form a recommendation with data backing, then ask Aman to approve/reject/modify.

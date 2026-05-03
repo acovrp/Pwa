@@ -75,10 +75,11 @@ Aman leads 5 specialist roles. The agent does not manage them directly — it pr
 Aman's single-file HTML command center, built personally and maintained by the agent.
 
 **Current version: v7.2** (full audit + 30 bug fixes, May 2026; filter fixes May 2026)
-**Live URL: https://acovrp.github.io/Pwa/**
+**Live URL (team, auth-gated): https://scos.aman-verma-741.workers.dev/** — Cloudflare Pages + Cloudflare Access, Google login required, `@sleepycat.in` domain whitelisted, external stakeholders added manually
+**Live URL (public, no auth): https://acovrp.github.io/Pwa/** — GitHub Pages, still live
 **Local file: `C:\Users\User\Downloads\pwa-push\index.html`**
-**GitHub repo: acovrp/Pwa** (single repo for everything — dashboard, brain files, agent context)
-**GitHub Pages serves from `main` branch**
+**GitHub repo: acovrp/Pwa** (single repo for everything — dashboard, brain files, agent context, data)
+**GitHub Pages serves from `main` branch; Cloudflare Pages also deploys from same repo**
 
 ### Architecture
 - Single HTML file, embedded JS + CSS
@@ -253,6 +254,9 @@ Aman is building the Marketplace OS into a product — an AI-led marketplace man
 - All reports are GZIP compressed — decode with `utf-8-sig` (handles BOM on first column)
 - Daily runner: `run_spapi.py` + `spapi_module.py` in agent folder
 - Output: `agent_data/spapi_data.json` — listings + traffic + callouts
+- After each daily pull, `run_spapi.py` copies `agent_data/br_history.csv` → `pwa-push/data/br_history.csv` → git commits + pushes → Cloudflare redeploys → team sees fresh data automatically
+- Historical backfill: `spapi_history.py` — pulls day-by-day GET_SALES_AND_TRAFFIC_REPORT from Jan 1 2026, checkpointed (safe to kill and resume). 56,264 rows pulled as of May 1 2026.
+- `data/br_history.csv` is committed in `acovrp/Pwa` repo — dashboard auto-loads it on open (relative path first, localhost fallback)
 - Telegram callouts: pending wiring. Task Scheduler scheduling: pending.
 
 **What SP-API pulls:**

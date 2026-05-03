@@ -22,17 +22,23 @@ They share the same brain files. They do not share memory between sessions.
 ```
 C:\Users\User\Downloads\sleepycat-agent\sleepycat-agent\
 ├── run_agent.py              ← START HERE: python run_agent.py
+├── run_spapi.py              ← Daily SP-API runner: pulls data + pushes br_history.csv to pwa-push
+├── spapi_module.py           ← Amazon SP-API client (token refresh, reports, download)
+├── spapi_history.py          ← Historical backfill: day-by-day CY2026 pull, checkpointed
 ├── voice.py                  ← Voice interface: python voice.py
 ├── bridge.py                 ← Task executor for file/git ops
-├── config.yaml               ← API keys + paths
+├── config.yaml               ← API keys + paths (gitignored — never commit)
 ├── task_queue.json           ← Bridge task queue
 ├── agent.log                 ← All agent actions logged here
-├── agent_data/               ← Trust levels, decision history
+├── agent_data/               ← Trust levels, decision history, SP-API output
+│   ├── br_history.csv        ← Local SP-API sales+traffic history (pushed to pwa-push/data/ daily)
+│   ├── br_history_checkpoint.json ← Tracks which days were pulled (for resume)
+│   ├── spapi_data.json       ← Latest daily health check output
 │   ├── memory/action_log.jsonl
 │   └── trust/trust_state.json
 └── agent/
     ├── core.py               ← Agent brain code (SleepyCatAgent class)
-    ├── dashboard.py          ← Local web UI
+    ├── dashboard.py          ← Local web UI (port 8080) + /br_data.csv endpoint
     ├── telegram_bot.py       ← Telegram approvals
     ├── watcher.py            ← CSV file watcher
     └── context/              ← EMPTY — brain moved to pwa-push/brain/
@@ -45,6 +51,9 @@ C:\Users\User\Downloads\pwa-push\
 ├── ai-token-dashboard.html   ← API usage tracker
 ├── .nojekyll                 ← GitHub Pages config
 ├── CLAUDE.md                 ← Claude Code reads on startup
+├── data/
+│   └── br_history.csv        ← 56,264 rows Jan 1–May 1 2026. Auto-loaded by dashboard.
+│                               Updated daily by run_spapi.py push after each SP-API pull.
 ├── brain/                    ← MASTER BRAIN — all tools read from here
 │   ├── sleepycat_brain.md    ← Business knowledge, who Aman is, channels, metrics
 │   └── agent_context.md      ← How the agent behaves, L0/L1/L2 rules
@@ -65,13 +74,15 @@ C:\Users\User\Documents\SleepyCat-Data\
 
 ## GitHub
 
-- **Repo:** `acovrp/Pwa` — https://github.com/acovrp/Pwa
-- **Live dashboard:** https://acovrp.github.io/Pwa/
+- **Repo:** `acovrp/Pwa` — https://github.com/acovrp/Pwa (PUBLIC)
+- **Live dashboard (team, auth-gated):** https://scos.aman-verma-741.workers.dev/ — Cloudflare Pages + Google login (`@sleepycat.in` whitelisted)
+- **Live dashboard (public):** https://acovrp.github.io/Pwa/ — GitHub Pages, no auth
 - **Live brain:** https://acovrp.github.io/Pwa/brain/sleepycat_brain.md
-- **Branch:** `main` (GitHub Pages serves from main)
+- **Branch:** `main` (both GitHub Pages and Cloudflare Pages deploy from main)
 - **Auth:** logged in as `acovrp`
 - **GitHub CLI:** `C:\Program Files\GitHub CLI\gh.exe` (not in PATH — use full path or subprocess)
 - **Remotes:** `origin` and `pwa` both point to same repo (harmless duplicate)
+- **sleepycat-agent repo:** `acovrp/sleepycat-agent` — **PRIVATE**. config.yaml gitignored. test_spapi.py and Flipkart/ gitignored.
 
 ### Git workflow (always from pwa-push folder)
 ```powershell
