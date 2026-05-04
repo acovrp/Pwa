@@ -624,7 +624,8 @@ var S = {
   ovMetric: 'units', amzMetric: 'units', flkMetric: 'units',
   kwScope: 'filtered', kwSeg: 'all', funnelType: 'branded',
   kwSort: 'spend', kwDir: 'desc',
-  _sortCol: null, _sortDir: 'desc'
+  _sortCol: null, _sortDir: 'desc',
+  expandedMonths: {}
 };
 
 // ══════════════════════════════════════════════
@@ -683,13 +684,25 @@ function isRateMetric(metric) {
 function getCols() {
   var cols = [];
   if (S.gran === 'monthly') {
-    // Monthly: one column per month
+    // Monthly: one column per month, or expanded into weeks
     MONTHS.forEach(function(m) {
-      cols.push({
-        type: 'month', key: m.key, label: m.label,
-        partial: m.partial, days: m.days, daysSoFar: m.daysSoFar || m.days,
-        weeks: m.weeks, weeksSoFar: m.weeksSoFar || m.weeks
-      });
+      if (S.expandedMonths[m.key]) {
+        var wc = m.partial ? (m.weeksSoFar || m.weeks) : m.weeks;
+        for (var w = 0; w < wc; w++) {
+          cols.push({
+            type: 'week', key: m.key, label: m.label.substring(0,3)+' W'+(w+1),
+            monthLabel: m.label, weekIdx: w,
+            partial: m.partial && w === wc-1, days: 7,
+            expanded: true, firstOfExpanded: (w === 0)
+          });
+        }
+      } else {
+        cols.push({
+          type: 'month', key: m.key, label: m.label,
+          partial: m.partial, days: m.days, daysSoFar: m.daysSoFar || m.days,
+          weeks: m.weeks, weeksSoFar: m.weeksSoFar || m.weeks
+        });
+      }
     });
     // Recent weeks as weekly columns
     RECENT_LABELS.forEach(function(lbl, i) {
@@ -726,9 +739,40 @@ function getCols() {
 }
 
 function getColLabel(col) {
-  if (col.type === 'week') return col.label;
-  if (col.partial) return col.label + '<span style="color:#f59e0b;font-size:9px">*</span>';
+  var partial = col.partial ? '<span style="color:#f59e0b;font-size:9px">*</span>' : '';
+  if (col.type === 'week' && col.expanded) {
+    var btn = col.firstOfExpanded
+      ? ' <button onclick="event.stopPropagation();toggleMonthExpand(\''+col.key+'\')" style="background:#e5e7eb;border:none;border-radius:3px;cursor:pointer;padding:0 4px;font-size:10px;line-height:14px;vertical-align:middle;color:#374151">−</button>'
+      : '';
+    return col.label + partial + btn;
+  }
+  if (col.type === 'week') return col.label + partial;
+  if (col.type === 'month') {
+    var expandBtn = ' <button onclick="event.stopPropagation();toggleMonthExpand(\''+col.key+'\')" style="background:#e5e7eb;border:none;border-radius:3px;cursor:pointer;padding:0 4px;font-size:10px;line-height:14px;vertical-align:middle;color:#374151">+</button>';
+    return col.label + partial + expandBtn;
+  }
   return col.label;
+}
+
+function toggleMonthExpand(key) {
+  S.expandedMonths[key] = !S.expandedMonths[key];
+  var amzM = S.amzMetric;
+  if (amzM !== 'ses-wow' && amzM !== 'ads-wow')
+    renderTrendTable('amz-product-tbl','amz', amzM==='organic'?'organic_pct':amzM);
+  var flkM = S.flkMetric;
+  if (flkM !== 'wow')
+    renderTrendTable('flk-product-tbl','flk', flkM==='organic'?'organic_pct':flkM);
+  renderTrendTable('ov-trend-tbl','amz', S.ovMetric);
+}
+
+function wowInlineBadge(curr, prev, metric) {
+  if (curr === null || prev === null || Math.abs(prev) < 0.0001) return '';
+  var pct = (curr - prev) / Math.abs(prev) * 100;
+  var lowerBetter = (metric==='acos'||metric==='tacos'||metric==='adspend');
+  var good = lowerBetter ? pct < 0 : pct > 0;
+  var cls = Math.abs(pct) < 1 ? 'neu' : (good ? 'pos' : 'neg');
+  var arrow = pct > 0.05 ? '▲' : pct < -0.05 ? '▼' : '→';
+  return '<span class="delta '+cls+'" style="display:block;font-size:9px;margin-top:1px">'+arrow+Math.abs(pct).toFixed(1)+'%</span>';
 }
 
 // Get value for a single channel + metric + col
@@ -1231,9 +1275,13 @@ function renderTrendTable(containerId, primaryCh, metric) {
         (row.indent?'<span style="color:#6c757d;font-size:11px">'+row.label+'</span>':'<strong>'+row.label+'</strong>')+'</td>';
 
       vals.forEach(function(v, i) {
+        var col = cols[i];
+        var isExpandedWeek = col.type === 'week' && col.expanded;
+        var showWow = isExpandedWeek && col.weekIdx > 0;
         var prev = i > 0 ? vals[i-1] : null;
-        var ds = (prev !== null && v !== null) ? dcls(v, prev, metric) : '';
-        html += '<td style="text-align:right" '+ds+'>'+fmtV(v, metric)+'</td>';
+        var ds = (!isExpandedWeek && prev !== null && v !== null) ? dcls(v, prev, metric) : '';
+        var badge = showWow ? wowInlineBadge(v, prev, metric) : '';
+        html += '<td style="text-align:right" '+ds+'>'+fmtV(v, metric)+badge+'</td>';
       });
 
       html += '<td style="text-align:right">'+trendBadge(vals, metric)+'</td>';
@@ -1269,7 +1317,13 @@ function renderTrendTable(containerId, primaryCh, metric) {
       return sum;
     });
     html += '<tr class="totals-row"><td style="font-weight:700">TOTAL</td>';
-    totVals.forEach(function(v) { html += '<td style="text-align:right;font-weight:700">'+fmtV(v, metric)+'</td>'; });
+    totVals.forEach(function(v, i) {
+      var col = cols[i];
+      var isExpandedWeek = col.type === 'week' && col.expanded;
+      var showWow = isExpandedWeek && col.weekIdx > 0;
+      var badge = showWow ? wowInlineBadge(v, totVals[i-1], metric) : '';
+      html += '<td style="text-align:right;font-weight:700">'+fmtV(v, metric)+badge+'</td>';
+    });
     html += '<td style="text-align:right;font-weight:700">'+trendBadge(totVals, metric)+'</td>';
     if (metric==='units'||metric==='revenue') html += '<td></td>';
     html += '</tr>';
