@@ -175,6 +175,20 @@ When brain is updated:
 - Fixes wrong May daily avg (was dividing by hardcoded 4 days when only 1 day of data existed)
 - Do NOT hardcode `daysSoFar` in `MONTHS` config — it is always overwritten at parse time
 
+### SP Report Parser (fixed May 2026)
+- File format: Amazon Sponsored Products report exported from Seller Central (search term / campaign level)
+- Current local file: `C:\Users\User\Downloads\Report_-_04_15_2026T14_20_10 (1).csv` (~250MB, 574K rows) — manual upload via SP upload slot, automation pending
+- **Column names in this format** (differs from older SP exports):
+  - ASIN: `Advertised product ID` (not `advertised asin` or `asin`)
+  - Spend: `Total cost` ✓ (matched correctly already)
+  - Sales: `Sales` (not `14 day total sales` — was missing from lookup, rows silently skipped)
+  - Date: `"Apr 23, 2026"` quoted format (not `YYYY-MM-DD` — regex failed, all rows defaulted to jan W1)
+- **Bug: duplicate processSpReport** — second definition (line ~2303) overrode the first. Second version only updated AD_SPEND totals, never wrote per-product adspend/acos/tacos. Fixed: removed duplicate, merged AD_SPEND update into the first (correct) version.
+- **organic_pct now computed in processSpReport**: `(total_rev − attributed_sales) / total_rev × 100`. Requires both BR and SP uploads to cover same months.
+- **CVR now auto-computed in processBusinessReport**: `units / sessions × 100` from br_history.csv — no upload needed, populates all months.
+- **CTR**: computed as `page_views / sessions × 100` (engagement proxy, not ad CTR). All-null in PRODUCTS blob; populated by processBusinessReport for all months when CSV loads.
+- To populate Apr/May for Ad Spend, ACOS, TACoS, Org%: upload the SP CSV via the SP upload slot. CVR populates automatically from br_history.csv.
+
 ### WoW Data Pipeline (wow_data.json)
 - Source Excel: `C:\Excel\FK WOW OVERALL.xlsx`, `C:\Excel\az WOW.xlsx`, `C:\Users\User\Downloads\Proofs\docs\AZ WOW ADS.xlsx`
 - Extractor: `C:\Excel\extract_wow.py` → outputs `C:\Excel\wow_data.json` (~250KB)

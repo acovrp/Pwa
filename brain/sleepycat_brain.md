@@ -99,12 +99,16 @@ Aman's single-file HTML command center, built personally and maintained by the a
 ### Known Data Sources
 | Source | What it feeds |
 |---|---|
-| Amazon Business Report | Units, revenue, sessions, CVR by ASIN |
+| Amazon Business Report (auto via SP-API) | Units, revenue, sessions, CVR, CTR (page_views/sessions) by ASIN — `br_history.csv` auto-loaded on page open |
+| SP Sponsored Products report (manual upload) | Ad spend, ACOS, TACoS, Org% per product per month — upload via SP slot. Current file: `C:\Users\User\Downloads\Report_-_04_15_2026T14_20_10 (1).csv` (~250MB). Automation in progress. |
 | SP Search Terms report (manual CSV or Ads API) | Keyword spend, clicks, ACOS → Keyword Intelligence tab |
 | Brand Analytics — Search Catalog Performance (manual CSV) | Search funnel — impression/click/ATC/purchase share → Search Funnel tab (Category Demand, SC Funnel Share, etc.) |
 | Brand Analytics — Search Terms Report (SP-API auto) | SC organic search presence — 147 search terms, position #1/2/3, click share, conv share, month-over-month → SC Organic Search Presence view |
 | Flipkart Sales export | Units, GMV, returns |
 | Snowflake | Ad spend (SP ASIN coverage ~62% due to keyword-level vs product-ad-level row mixing) |
+
+### SP Report Column Format (current export as of Apr 2026)
+Amazon SC SP report columns (after normalization): `date` (format: "Apr 23, 2026"), `week`, `month`, `year`, `ad product`, `campaign name`, `advertised product id` (= ASIN), `total cost` (= spend), `sales` (= 14-day attributed revenue). processSpReport handles this format. If columns change in a future export, update `ci()` lookup strings in processSpReport.
 
 ### Changes in v7.3 (May 2026)
 - All 7 previously unhooked upload processors now called from `handleUpload`: `fk`, `fkads`, `sb`, `sd`, `pp`, `inv`, `ret`
