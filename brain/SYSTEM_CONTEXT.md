@@ -153,6 +153,13 @@ When brain is updated:
 - Always syntax-check after JS edits: extract script, run `node --check`
 - Deploy: edit locally → git push → GitHub Pages auto-updates in ~60 seconds
 
+### Ads integration — BROKEN (May 2026, Aman fixing)
+- `processUnifiedAdsReport()`, `ADS_STATE`, `uslot-ads`, `ads-panel-card`, `renderAdsPanel()` were injected into index.html during May 2026 session
+- **Currently broken: 0 rows processed** — column name bug: code looks for `"advertised product id"` but CSV column header is `"Advertised product ID (ASIN)"`. The `(ASIN)` suffix breaks the lookup, function exits early silently.
+- `az-ads-dashboard.html` at `C:\Users\User\Downloads\` is a useless standalone file — can be deleted
+- **North star decided:** Agent parses raw ads CSV server-side → writes `data/ads_agg.json` → dashboard loads JSON. No browser-side CSV parsing ever. Inline expand drill-down (not tabs). See sleepycat_brain.md for full vision.
+- Do not build on top of the broken injected code. Fix the column name or tear it out entirely when Aman is ready.
+
 ### Gran Toggle + Sum/Avg Semantics (fixed May 2026)
 - **Monthly + Sum** = month total
 - **Monthly + Avg** = daily avg (`total / daysSoFar`)
