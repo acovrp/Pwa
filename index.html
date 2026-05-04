@@ -430,6 +430,7 @@ tbody tr.l3-row.open{display:table-row}
           <button class="metric-tab" onclick="setAmzMetric('adspend',this)">Ad Spend</button>
           <button class="metric-tab" onclick="setAmzMetric('acos',this)">ACOS</button>
           <button class="metric-tab" onclick="setAmzMetric('tacos',this)">TACoS</button>
+          <button class="metric-tab" onclick="setAmzMetric('ctr',this)">CTR</button>
           <button class="metric-tab" onclick="setAmzMetric('cvr',this)">CVR</button>
         </div>
       </div>
@@ -1916,6 +1917,7 @@ function processBusinessReport(rows) {
   var iU = ci('units_ordered','units ordered');
   var iR = ci('ordered_product_sales','ordered product sales');
   var iS = ci('sessions','browser_sessions');
+  var iC = ci('clicks','page views','page_views');
   if (iA<0||iU<0) { console.warn('BR: missing ASIN or units column'); return; }
   
   // Aggregate by product × month × week
@@ -1938,12 +1940,14 @@ function processBusinessReport(rows) {
     var units = parseFloat((r[iU]||'0').toString().replace(/[^\d.-]/g,''))||0;
     var rev = parseFloat((r[iR]||'0').toString().replace(/[^\d.-]/g,''))||0;
     var sessions = iS>=0 ? (parseFloat((r[iS]||'0').toString().replace(/[^\d.-]/g,''))||0) : 0;
-    
+    var clicks = iC>=0 ? (parseFloat((r[iC]||'0').toString().replace(/[^\d.-]/g,''))||0) : 0;
+
     if (!agg[pid]) agg[pid] = {};
-    if (!agg[pid][mo]) agg[pid][mo] = [{u:0,r:0,s:0},{u:0,r:0,s:0},{u:0,r:0,s:0},{u:0,r:0,s:0}];
+    if (!agg[pid][mo]) agg[pid][mo] = [{u:0,r:0,s:0,c:0},{u:0,r:0,s:0,c:0},{u:0,r:0,s:0,c:0},{u:0,r:0,s:0,c:0}];
     agg[pid][mo][wk].u += units;
     agg[pid][mo][wk].r += rev;
     agg[pid][mo][wk].s += sessions;
+    agg[pid][mo][wk].c += clicks;
   }
   
   // Update PRODUCTS
@@ -1960,6 +1964,11 @@ function processBusinessReport(rows) {
       ch.revenue[mo] = wks.map(function(w, wi){ return wi < wso ? w.r : null; });
       if (!ch.sessions) ch.sessions = {};
       ch.sessions[mo] = wks.map(function(w, wi){ return wi < wso ? w.s : null; });
+      if (!ch.ctr) ch.ctr = {};
+      ch.ctr[mo] = wks.map(function(w, wi){
+        if (wi >= wso) return null;
+        return (w.c > 0 && w.s > 0) ? w.c / w.s * 100 : null;
+      });
     }
     // Set recent = most recent month in uploaded data
     var moOrder = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
@@ -1971,6 +1980,7 @@ function processBusinessReport(rows) {
       ch.units.recent = ch.units[latestMo].slice();
       ch.revenue.recent = ch.revenue[latestMo].slice();
       if (ch.sessions && ch.sessions[latestMo]) ch.sessions.recent = ch.sessions[latestMo].slice();
+      if (ch.ctr && ch.ctr[latestMo]) ch.ctr.recent = ch.ctr[latestMo].slice();
     }
     updated++;
   }
