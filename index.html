@@ -241,6 +241,8 @@ tbody tr.l3-row.open{display:table-row}
 .ads-terms-tbl td{padding:5px 8px;border-bottom:1px solid var(--border,#1a1a2a);color:var(--text)}
 .ads-terms-tbl tr:hover td{background:var(--hover,rgba(255,255,255,.04)}
 .kpi-filter-sel{background:var(--card,#1a1a2e);color:var(--text,#eee);border:1px solid var(--border,#2a2a3a);border-radius:6px;padding:4px 8px;font-size:.78rem;cursor:pointer}
+.ads-l2 td{border-bottom:1px solid #eef2ff}
+.ads-l3 td{border-bottom:1px solid #fff3e0}
 </style>
 </head>
 <body>
@@ -453,19 +455,13 @@ tbody tr.l3-row.open{display:table-row}
   <div class="section-card">
     <div class="section-hd">
       <div>
-        <div class="section-title">Amazon · Product Performance</div>
-        <div class="section-desc" id="amz-mode-desc">Monthly totals · consolidated · Mar* = 30 days so far</div>
+        <div class="section-title">Amazon · Unified Diagnostics</div>
+        <div class="section-desc" id="amz-mode-desc">Weekly · Business + Ads merged · TACOS/ACOS/ROAS per product per week</div>
       </div>
       <div class="section-controls">
-        <div class="metric-tabs" id="amz-metric-tabs">
-          <button class="metric-tab active" onclick="setAmzMetric('units',this)">Units</button>
-          <button class="metric-tab" onclick="setAmzMetric('revenue',this)">Revenue</button>
-          <button class="metric-tab" onclick="setAmzMetric('organic',this)">Org%</button>
-          <button class="metric-tab" onclick="setAmzMetric('adspend',this)">Ad Spend</button>
-          <button class="metric-tab" onclick="setAmzMetric('acos',this)">ACOS</button>
-          <button class="metric-tab" onclick="setAmzMetric('tacos',this)">TACoS</button>
-          <button class="metric-tab" onclick="setAmzMetric('ctr',this)">CTR</button>
-          <button class="metric-tab" onclick="setAmzMetric('cvr',this)">CVR</button>
+        <div class="toggle-group" style="margin-right:8px">
+          <button class="toggle-btn active" onclick="setUnifiedGroup('line',this)">By Product</button>
+          <button class="toggle-btn" onclick="setUnifiedGroup('cat',this)">By Category</button>
         </div>
       </div>
     </div>
@@ -672,7 +668,8 @@ var S = {
   kwScope: 'filtered', kwSeg: 'all', funnelType: 'branded',
   kwSort: 'spend', kwDir: 'desc',
   _sortCol: null, _sortDir: 'desc',
-  expandedMonths: {}
+  expandedMonths: {},
+  unifiedGroup: 'line' // line | cat
 };
 
 // ══════════════════════════════════════════════
@@ -1688,120 +1685,269 @@ function renderAdsPanel() {
   var card = document.getElementById('ads-panel-card');
   var el = document.getElementById('ads-panel');
   if (!el) return;
-
-  if (!ADS_STATE.ready) {
-    if (card) card.style.display = 'none';
-    return;
-  }
+  if (!ADS_STATE.ready) { if (card) card.style.display = 'none'; return; }
   if (card) card.style.display = '';
 
-  var fLine   = S.line  || '';
-  var fAdType = (document.getElementById('ads-f-adtype')  || {}).value || '';
-  var fIntent = (document.getElementById('ads-f-intent')  || {}).value || '';
-  var fWks    = parseInt((document.getElementById('ads-f-weeks') || {}).value || '0');
-
-  var weeks = ADS_STATE.weeks;
+  var fWks = parseInt((document.getElementById('ads-f-weeks') || {}).value || '0');
+  var weeks = ADS_STATE.weeks.slice();
   if (fWks > 0) weeks = weeks.slice(-fWks);
-  var weekOk = {};
-  weeks.forEach(function(w){ weekOk[w] = 1; });
+  var weekOk = {}; weeks.forEach(function(w){ weekOk[w]=1; });
 
-  // Aggregate
-  var totSp=0, totSl=0, totIm=0, totCk=0, totOr=0;
-  var byI = {Branded:{sp:0,sl:0}, Generic:{sp:0,sl:0}, Competition:{sp:0,sl:0}, Auto:{sp:0,sl:0}};
-  var byF = {SP:{sp:0,sl:0}, SD:{sp:0,sl:0}, SB:{sp:0,sl:0}};
+  var lines = [];
+  PRODUCTS.forEach(function(p){ lines.push(p.line); });
+  lines = lines.filter(function(v,i,a){ return a.indexOf(v)===i; });
 
-  Object.keys(ADS_STATE.cube).forEach(function(key) {
-    var p = key.split('||');
-    var ln=p[0], at=p[1], it=p[2], wk=p[3];
-    if (fLine && ln !== fLine) return;
-    if (fAdType && at !== fAdType) return;
-    if (fIntent && it !== fIntent) return;
-    if (fWks > 0 && !weekOk[wk]) return;
-    var d = ADS_STATE.cube[key];
-    totSp+=d.sp; totSl+=d.sl; totIm+=d.im; totCk+=d.ck; totOr+=d.or;
-    if (byI[it]) { byI[it].sp+=d.sp; byI[it].sl+=d.sl; }
-    if (byF[at]) { byF[at].sp+=d.sp; byF[at].sl+=d.sl; }
+  // aggregates
+  var byLW={}, byLAW={}, byLAIW={};
+  Object.keys(ADS_STATE.cube).forEach(function(key){
+    var p=key.split('||'), ln=p[0], at=p[1], it=p[2], wk=p[3];
+    if (!weekOk[wk]) return;
+    var d=ADS_STATE.cube[key];
+    var lw=ln+'||'+wk; if(!byLW[lw]) byLW[lw]={sp:0,sl:0,im:0,ck:0,or:0,un:0}; var a=byLW[lw]; a.sp+=d.sp;a.sl+=d.sl;a.im+=d.im;a.ck+=d.ck;a.or+=d.or;a.un+=d.un;
+    var law=ln+'||'+at+'||'+wk; if(!byLAW[law]) byLAW[law]={sp:0,sl:0,im:0,ck:0,or:0,un:0}; var b=byLAW[law]; b.sp+=d.sp;b.sl+=d.sl;b.im+=d.im;b.ck+=d.ck;b.or+=d.or;b.un+=d.un;
+    byLAIW[key]=d;
   });
 
-  var acos = totSl > 0 ? (totSp / totSl * 100) : 0;
-  var roas = totSp > 0 ? (totSl / totSp)        : 0;
-  var ctr  = totIm > 0 ? (totCk / totIm * 100)  : 0;
-  var cvr  = totCk > 0 ? (totOr / totCk * 100)  : 0;
+  function inr(v){ return '₹' + Math.round(v).toLocaleString('en-IN'); }
+  function k(v){ return v>=100000 ? (v/100000).toFixed(1)+'L' : v>=1000 ? (v/1000).toFixed(1)+'K' : Math.round(v).toString(); }
+  function pct(v){ return (v||0).toFixed(1)+'%'; }
+  function fx(v){ return (v||0).toFixed(2)+'x'; }
+  function acosClr(v){ return v<15?'#065f46':v<25?'#92400e':'#b91c1c'; }
+  function acosBg(v){ return v<15?'#d1fae5':v<25?'#fef3c7':'#fee2e2'; }
+  function roasClr(v){ return v>5?'#065f46':v>3?'#92400e':'#b91c1c'; }
+  function roasBg(v){ return v>5?'#d1fae5':v>3?'#fef3c7':'#fee2e2'; }
 
-  function inr(v) { return '₹' + Math.round(v).toLocaleString('en-IN'); }
-  function pct(v) { return v.toFixed(1) + '%'; }
-  function fx(v)  { return v.toFixed(2) + 'x'; }
-  function kpi(label, val, cls) {
-    return '<div class="ads-kpi' + (cls ? ' ' + cls : '') + '"><div class="ads-kpi-val">' + val + '</div><div class="ads-kpi-lbl">' + label + '</div></div>';
+  function calc(d){
+    return {
+      sp:d.sp, sl:d.sl, im:d.im, ck:d.ck, or:d.or, un:d.un,
+      acos:d.sl>0?(d.sp/d.sl*100):0,
+      roas:d.sp>0?(d.sl/d.sp):0,
+      ctr:d.im>0?(d.ck/d.im*100):0,
+      cvr:d.ck>0?(d.or/d.ck*100):0,
+      cpc:d.ck>0?(d.sp/d.ck):0
+    };
   }
 
-  var acosClass = acos < 15 ? 'pos' : acos < 25 ? 'warn' : 'neg';
-  var roasClass = roas > 5  ? 'pos' : roas > 3  ? 'warn' : 'neg';
-
-  // Intent bars
-  function intentBar(lbl, d) {
-    var sharePct = totSp > 0 ? (d.sp / totSp * 100) : 0;
-    var badgeAcos = d.sl > 0 ? (d.sp / d.sl * 100) : 0;
-    return '<div class="ads-intent-row"><span class="ads-intent-lbl">' + lbl + '</span>'
-      + '<div class="ads-intent-bar-wrap"><div class="ads-intent-bar" style="width:' + Math.min(sharePct, 100).toFixed(1) + '%"></div></div>'
-      + '<span class="ads-intent-stat">' + inr(d.sp) + ' &middot; ' + pct(sharePct) + ' share &middot; ACOS ' + pct(badgeAcos) + '</span></div>';
+  function deltaBadge(cur, prev, fmt, invert){
+    if (!prev || !cur) return '';
+    var d = fmt==='pct' ? (cur-prev) : ((cur-prev)/prev*100);
+    var cls = invert ? (d>0?'neg':d<0?'pos':'neu') : (d>0?'pos':d<0?'neg':'neu');
+    var sym = d>0?'▲':d<0?'▼':'→';
+    return '<span class="delta ' + cls + '">' + sym + ' ' + Math.abs(d).toFixed(1) + (fmt==='pct'?'pp':'%') + '</span>';
   }
 
-  // Format badges
-  function fmtBadge(lbl, d) {
-    var sh = totSp > 0 ? (d.sp / totSp * 100) : 0;
-    return '<div class="ads-fmt-badge"><div class="ads-fmt-name">' + lbl + '</div>'
-      + '<div class="ads-fmt-spend">' + inr(d.sp) + '</div>'
-      + '<div class="ads-fmt-share">' + pct(sh) + '</div></div>';
+  function miniCell(d, pd, wide){
+    var c = calc(d);
+    var ac = 'background:'+acosBg(c.acos)+';color:'+acosClr(c.acos)+';padding:2px 6px;border-radius:4px;font-weight:700;font-size:11px;display:inline-block;margin-right:4px';
+    var rc = 'background:'+roasBg(c.roas)+';color:'+roasClr(c.roas)+';padding:2px 6px;border-radius:4px;font-weight:700;font-size:11px;display:inline-block;margin-right:4px';
+    var html = '<div style="line-height:1.6;font-size:11px">'
+      + '<div><b>' + k(c.sp) + '</b> spend &nbsp; <b>' + k(c.sl) + '</b> sales</div>'
+      + '<div><span style="'+ac+'">ACOS ' + pct(c.acos) + '</span>' + deltaBadge(c.acos, pd?calc(pd).acos:null, 'pct', true) + '</div>'
+      + '<div><span style="'+rc+'">ROAS ' + fx(c.roas) + '</span>' + deltaBadge(c.roas, pd?calc(pd).roas:null, 'pct', false) + '</div>'
+      + '<div style="color:var(--text-secondary)">CTR ' + pct(c.ctr) + ' &middot; CVR ' + pct(c.cvr) + ' &middot; ' + Math.round(c.or) + ' ord</div>'
+      + '</div>';
+    return html;
   }
 
-  // Top search terms
-  var termRows = [];
-  Object.keys(ADS_STATE.termCube).forEach(function(k) {
-    var d = ADS_STATE.termCube[k];
-    if (fLine && d.line !== fLine) return;
-    if (fWks > 0) return; // skip term filter on week for now (terms aren't week-bucketed)
-    termRows.push(d);
+  // Build table
+  var html = '<div style="overflow-x:auto"><table class="wow-table" style="min-width:1000px">';
+  html += '<thead><tr><th style="text-align:left;min-width:180px">Product Line</th>';
+  weeks.slice().reverse().forEach(function(wk){ html += '<th style="text-align:center;min-width:160px">' + wk + '</th>'; });
+  html += '</tr></thead><tbody>';
+
+  lines.forEach(function(ln){
+    var p = PRODUCTS.find(function(x){ return x.line === ln; });
+    var name = p ? p.name : ln;
+
+    // Check if this line has any data
+    var hasData = weeks.some(function(wk){ return byLW[ln+'||'+wk]; });
+    if (!hasData) return;
+
+    html += '<tr style="background:#fff;border-top:2px solid #c7d2fe">'
+      + '<td style="font-weight:700;font-size:13px;padding:10px 12px">'
+      + '<span class="exp-btn" onclick="toggleAdsL1(this,'+"'"+ln+"'"+')">▶</span>' + name + '</td>';
+    weeks.slice().reverse().forEach(function(wk, idx){
+      var d = byLW[ln+'||'+wk] || {sp:0,sl:0,im:0,ck:0,or:0,un:0};
+      var prevWk = weeks[weeks.length - 1 - idx - 1];
+      var pd = prevWk ? byLW[ln+'||'+prevWk] : null;
+      html += '<td style="padding:8px;vertical-align:top;border-left:1px solid #f0f0f0">' + miniCell(d, pd) + '</td>';
+    });
+    html += '</tr>';
+
+    // L2: Ad Type rows (hidden)
+    ['SP','SD','SB'].forEach(function(at){
+      var atHas = weeks.some(function(wk){ return byLAW[ln+'||'+at+'||'+wk]; });
+      if (!atHas) return;
+      html += '<tr class="ads-l2 ads-l2-'+ln+'" style="display:none;background:#f8faff">'
+        + '<td style="padding:8px 12px 8px 32px;font-weight:600;font-size:12px;color:var(--accent)">' + at + '</td>';
+      weeks.slice().reverse().forEach(function(wk, idx){
+        var d = byLAW[ln+'||'+at+'||'+wk] || {sp:0,sl:0,im:0,ck:0,or:0,un:0};
+        var prevWk = weeks[weeks.length - 1 - idx - 1];
+        var pd = prevWk ? byLAW[ln+'||'+at+'||'+prevWk] : null;
+        html += '<td style="padding:6px 8px;vertical-align:top;border-left:1px solid #f0f0f0">' + miniCell(d, pd) + '</td>';
+      });
+      html += '</tr>';
+
+      // L3: Intent rows (hidden)
+      ['Branded','Generic','Competition','Auto'].forEach(function(it){
+        var itHas = weeks.some(function(wk){ return byLAIW[ln+'||'+at+'||'+it+'||'+wk]; });
+        if (!itHas) return;
+        html += '<tr class="ads-l3 ads-l3-'+ln+'" style="display:none;background:#fff8f0">'
+          + '<td style="padding:6px 12px 6px 52px;font-size:11px;color:var(--text-secondary)">' + it + '</td>';
+        weeks.slice().reverse().forEach(function(wk, idx){
+          var d = byLAIW[ln+'||'+at+'||'+it+'||'+wk] || {sp:0,sl:0,im:0,ck:0,or:0,un:0};
+          var prevWk = weeks[weeks.length - 1 - idx - 1];
+          var pd = prevWk ? byLAIW[ln+'||'+at+'||'+it+'||'+prevWk] : null;
+          html += '<td style="padding:4px 8px;vertical-align:top;border-left:1px solid #f0f0f0;font-size:10px">' + miniCell(d, pd) + '</td>';
+        });
+        html += '</tr>';
+      });
+    });
   });
-  termRows.sort(function(a,b){ return b.sp - a.sp; });
-  var top20 = termRows.slice(0, 20);
-  var termTableHtml = '';
-  if (top20.length) {
-    termTableHtml = '<div class="ads-terms-title">Top Search Terms (SP · by Spend)</div>'
-      + '<table class="ads-terms-tbl"><thead><tr><th>Search Term</th><th>Spend</th><th>Sales</th><th>ACOS</th><th>Orders</th><th>CPC</th></tr></thead><tbody>'
-      + top20.map(function(d) {
-          var a = d.sl > 0 ? (d.sp / d.sl * 100).toFixed(1) : '-';
-          var cpc = d.ck > 0 ? (d.sp / d.ck).toFixed(2) : '-';
-          return '<tr><td>' + d.term + '</td><td>' + inr(d.sp) + '</td><td>' + inr(d.sl) + '</td><td>' + a + '%</td><td>' + d.or + '</td><td>₹' + cpc + '</td></tr>';
-        }).join('')
-      + '</tbody></table>';
+
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+function toggleAdsL1(btn, ln){
+  var open = btn.textContent === '▼';
+  btn.textContent = open ? '▶' : '▼';
+  document.querySelectorAll('.ads-l2-'+ln).forEach(function(r){ r.style.display = open ? 'none' : 'table-row'; });
+  document.querySelectorAll('.ads-l3-'+ln).forEach(function(r){ r.style.display = 'none'; });
+}
+
+
+// ── UNIFIED WEEKLY TABLE (formulated, replaces old monthly product table) ───
+function renderUnifiedWeeklyTable() {
+  var container = document.getElementById('amz-product-tbl');
+  if (!container) return;
+  if (!WEEKLY_WEEKS.length) {
+    container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-secondary)">Upload Business Report + Unified Ads to see weekly diagnostics.</div>';
+    return;
   }
 
-  el.innerHTML =
-    '<div class="ads-kpi-row">'
-      + kpi('Ad Spend', inr(totSp), '')
-      + kpi('Ad Sales', inr(totSl), '')
-      + kpi('ACOS', pct(acos), acosClass)
-      + kpi('ROAS', fx(roas), roasClass)
-      + kpi('Impressions', Math.round(totIm).toLocaleString('en-IN'), '')
-      + kpi('CTR', pct(ctr), '')
-      + kpi('CVR', pct(cvr), '')
-      + kpi('Orders', Math.round(totOr).toLocaleString('en-IN'), '')
-    + '</div>'
-    + '<div class="ads-section-lbl">Intent Breakdown</div>'
-    + '<div class="ads-intent-wrap">'
-      + intentBar('Branded', byI.Branded)
-      + intentBar('Generic', byI.Generic)
-      + intentBar('Competition', byI.Competition)
-      + intentBar('Auto', byI.Auto)
-    + '</div>'
-    + '<div class="ads-section-lbl">Format Breakdown</div>'
-    + '<div class="ads-fmt-wrap">'
-      + fmtBadge('SP', byF.SP)
-      + fmtBadge('SD', byF.SD)
-      + fmtBadge('SB', byF.SB)
-    + '</div>'
-    + (termTableHtml ? '<div class="ads-terms-wrap">' + termTableHtml + '</div>' : '');
+  var weeks = WEEKLY_WEEKS.slice(-13); // last 13 weeks
+  var groupBy = S.unifiedGroup || 'line'; // 'line' | 'cat' | 'none'
+
+  // Build row keys
+  var rowKeys = [];
+  var rowMeta = {};
+  if (groupBy === 'cat') {
+    var cats = {};
+    PRODUCTS.forEach(function(p){ cats[p.cat] = true; });
+    rowKeys = Object.keys(cats).sort();
+    rowKeys.forEach(function(c){ rowMeta[c] = {name: c.charAt(0).toUpperCase()+c.slice(1), isCat: true}; });
+  } else {
+    PRODUCTS.forEach(function(p){
+      if (rowKeys.indexOf(p.line) === -1) {
+        rowKeys.push(p.line);
+        rowMeta[p.line] = {name: p.name, cat: p.cat, color: p.color};
+      }
+    });
+  }
+
+  function getCell(lineOrCat, wk) {
+    var keys = Object.keys(WEEKLY_CUBE).filter(function(k){
+      var p = k.split('||');
+      if (groupBy === 'cat') {
+        var prod = PRODUCTS.find(function(x){ return x.line === p[0]; });
+        return prod && prod.cat === lineOrCat && p[1] === wk;
+      }
+      return p[0] === lineOrCat && p[1] === wk;
+    });
+    if (!keys.length) return null;
+    var c = {revenue:0, units:0, sessions:0, pageViews:0, adSpend:0, adSales:0, impressions:0, adClicks:0, orders:0, adUnits:0};
+    keys.forEach(function(k){
+      var d = WEEKLY_CUBE[k];
+      for (var f in c) if (d[f]) c[f] += d[f];
+    });
+    c.acos = c.adSales > 0 ? c.adSpend / c.adSales * 100 : 0;
+    c.roas = c.adSpend > 0 ? c.adSales / c.adSpend : 0;
+    c.ctr  = c.impressions > 0 ? c.adClicks / c.impressions * 100 : 0;
+    c.cvr  = c.adClicks > 0 ? c.orders / c.adClicks * 100 : 0;
+    c.tacos = c.revenue > 0 ? c.adSpend / c.revenue * 100 : 0;
+    c.organicPct = c.revenue > 0 ? (c.revenue - c.adSales) / c.revenue * 100 : 0;
+    c.cvrBiz = c.sessions > 0 ? c.units / c.sessions * 100 : 0;
+    return c;
+  }
+
+  function k(v){ return v>=100000 ? (v/100000).toFixed(1)+'L' : v>=1000 ? (v/1000).toFixed(1)+'K' : Math.round(v).toString(); }
+  function pct(v){ return (v||0).toFixed(1)+'%'; }
+  function clr(v, lo, hi){ return v>hi?'#b91c1c':v>lo?'#92400e':'#065f46'; }
+  function bg(v, lo, hi){ return v>hi?'#fee2e2':v>lo?'#fef3c7':'#d1fae5'; }
+
+  function miniCell(c, pc) {
+    if (!c) return '<td style="padding:8px;border-left:1px solid #f0f0f0;background:#fafafa"></td>';
+    var tc = 'background:'+bg(c.tacos,12,20)+';color:'+clr(c.tacos,12,20)+';padding:2px 5px;border-radius:4px;font-weight:700;font-size:11px;display:inline-block';
+    var ac = 'background:'+bg(c.acos,15,25)+';color:'+clr(c.acos,15,25)+';padding:2px 5px;border-radius:4px;font-weight:700;font-size:11px;display:inline-block';
+    var rc = 'background:'+bg(c.roas,3,5)+';color:'+clr(c.roas,3,5)+';padding:2px 5px;border-radius:4px;font-weight:700;font-size:11px;display:inline-block';
+    var del = '';
+    if (pc && pc.tacos) {
+      var d = c.tacos - pc.tacos;
+      del = '<span class="delta ' + (d>0?'neg':d<0?'pos':'neu') + '">' + (d>0?'▲':d<0?'▼':'→') + ' ' + Math.abs(d).toFixed(1) + 'pp</span>';
+    }
+    return '<td style="padding:8px;border-left:1px solid #f0f0f0;vertical-align:top">'
+      + '<div style="font-size:11px;line-height:1.6">'
+      + '<div><b>₹' + k(c.revenue) + '</b> &nbsp; <span style="color:var(--text-secondary)">' + k(c.units) + ' u</span></div>'
+      + '<div><span style="'+tc+'">TACOS ' + pct(c.tacos) + '</span>' + del + '</div>'
+      + '<div><span style="'+ac+'">ACOS ' + pct(c.acos) + '</span> &nbsp; <span style="'+rc+'">ROAS ' + c.roas.toFixed(1) + 'x</span></div>'
+      + '<div style="color:var(--text-secondary)">CTR ' + pct(c.ctr) + ' · CVR ' + pct(c.cvrBiz) + ' · ' + Math.round(c.sessions) + ' ses</div>'
+      + '</div></td>';
+  }
+
+  var html = '<div style="overflow-x:auto"><table class="wow-table" style="min-width:'+(200+weeks.length*170)+'px">';
+  html += '<thead><tr><th style="text-align:left;min-width:180px;position:sticky;left:0;z-index:6;background:#f8f9fa">Product</th>';
+  weeks.forEach(function(wk){ html += '<th style="text-align:center;min-width:170px">' + wk + '</th>'; });
+  html += '</tr></thead><tbody>';
+
+  rowKeys.forEach(function(rk){
+    var meta = rowMeta[rk];
+    var hasAny = weeks.some(function(wk){ return getCell(rk, wk); });
+    if (!hasAny) return;
+    html += '<tr style="border-top:2px solid #c7d2fe">'
+      + '<td style="font-weight:700;font-size:13px;padding:10px 12px;position:sticky;left:0;background:#fff;z-index:5">'
+      + '<span class="exp-btn" onclick="toggleUnifiedL1(this,'+"'"+rk+"'"+')">▶</span>' + meta.name + '</td>';
+    weeks.forEach(function(wk, idx){
+      var c = getCell(rk, wk);
+      var pc = idx > 0 ? getCell(rk, weeks[idx-1]) : null;
+      html += miniCell(c, pc);
+    });
+    html += '</tr>';
+
+    // L2: SP/SD/SB per product (hidden initially)
+    if (groupBy !== 'cat') {
+      ['SP','SD','SB'].forEach(function(at){
+        var atHas = weeks.some(function(wk){
+          var key = rk+'||'+at; // need adType cube lookup
+          return ADS_STATE.cube[rk+'||'+at+'||Branded||'+wk] || ADS_STATE.cube[rk+'||'+at+'||Generic||'+wk];
+        });
+        if (!atHas) return;
+        html += '<tr class="uni-l2 uni-l2-'+rk+'" style="display:none;background:#f8faff">'
+          + '<td style="padding:8px 12px 8px 32px;font-weight:600;font-size:12px;color:var(--accent);position:sticky;left:0;background:#f8faff;z-index:5">' + at + '</td>';
+        weeks.forEach(function(wk, idx){
+          var c = {adSpend:0,adSales:0,impressions:0,adClicks:0,orders:0};
+          ['Branded','Generic','Competition','Auto'].forEach(function(it){
+            var d = ADS_STATE.cube[rk+'||'+at+'||'+it+'||'+wk];
+            if (d) { c.adSpend+=d.sp; c.adSales+=d.sl; c.impressions+=d.im; c.adClicks+=d.ck; c.orders+=d.or; }
+          });
+          c.acos = c.adSales>0?c.adSpend/c.adSales*100:0; c.roas=c.adSpend>0?c.adSales/c.adSpend:0;
+          c.ctr=c.impressions>0?c.adClicks/c.impressions*100:0; c.cvr=c.adClicks>0?c.orders/c.adClicks*100:0;
+          var pc = idx>0?{tacos:0}:null; // simplify prev for L2
+          html += miniCell(c, pc);
+        });
+        html += '</tr>';
+      });
+    }
+  });
+
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+}
+
+function toggleUnifiedL1(btn, rk){
+  var open = btn.textContent === '▼';
+  btn.textContent = open ? '▶' : '▼';
+  document.querySelectorAll('.uni-l2-'+rk).forEach(function(r){ r.style.display = open ? 'none' : 'table-row'; });
 }
 
 function applyFilters(){
@@ -1829,6 +1975,14 @@ function setAmzMetric(v,btn){
   document.querySelectorAll('#amz-metric-tabs .metric-tab').forEach(function(b){b.classList.remove('active')});
   btn.classList.add('active');
   renderTrendTable('amz-product-tbl','amz',v==='organic'?'organic_pct':v);
+}
+
+function setUnifiedGroup(v,btn){
+  S.unifiedGroup=v;
+  var par=btn.parentNode;
+  if(par) par.querySelectorAll('.toggle-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  renderUnifiedWeeklyTable();
 }
 
 function setFlkMetric(v,btn){
@@ -1885,7 +2039,7 @@ function switchTab(t,el){
 // Re-render all product tables when gran/display/view changes
 function renderTables(){
   renderOvTrend();
-  renderTrendTable('amz-product-tbl','amz',S.amzMetric==='organic'?'organic_pct':S.amzMetric);
+  renderUnifiedWeeklyTable();
   renderTrendTable('flk-product-tbl','flk',S.flkMetric==='organic'?'organic_pct':S.flkMetric);
 }
 
@@ -1978,6 +2132,56 @@ var ADS_STATE = {
   termCube: {},  // "term||line" → {sp,ck,or,sl}  (SP only)
   weeks: []      // sorted unique ISO weeks
 };
+
+// ── UNIFIED WEEKLY CUBE (formulated, not fixed) ──────────────────────────────
+// Key: "line||YYYY-WNN"  →  {revenue, units, sessions, pageViews, adSpend, adSales,
+//                            impressions, adClicks, orders, adUnits, acos, roas, ctr, cvr, tacos, organicPct}
+// Populated by business report upload + ads upload. All render views read from here.
+var WEEKLY_CUBE = {};
+var WEEKLY_WEEKS = []; // sorted unique weeks present in cube
+
+function isoWeekFromDate(dtStr) {
+  var parts = dtStr.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if (!parts) return null;
+  var dt = new Date(parseInt(parts[1]), parseInt(parts[2])-1, parseInt(parts[3]));
+  if (isNaN(dt)) return null;
+  dt.setHours(0,0,0,0);
+  dt.setDate(dt.getDate() + 3 - (dt.getDay() + 6) % 7);
+  var jan4 = new Date(dt.getFullYear(), 0, 4);
+  var wk = 1 + Math.round(((dt - jan4) / 86400000 - 3 + (jan4.getDay() + 6) % 7) / 7);
+  return dt.getFullYear() + '-W' + (wk < 10 ? '0' : '') + wk;
+}
+
+function getLineByPid(pid) {
+  var p = PRODUCTS.find(function(x){ return x.id === pid; });
+  return p ? p.line : null;
+}
+
+function setWeeklyCube(line, week, vals) {
+  var key = line + '||' + week;
+  if (!WEEKLY_CUBE[key]) WEEKLY_CUBE[key] = {};
+  var c = WEEKLY_CUBE[key];
+  for (var k in vals) {
+    if (vals[k] != null) {
+      c[k] = (c[k] || 0) + vals[k];
+    }
+  }
+}
+
+function recomputeWeeklyDerived() {
+  Object.keys(WEEKLY_CUBE).forEach(function(key) {
+    var c = WEEKLY_CUBE[key];
+    c.acos = (c.adSales > 0) ? (c.adSpend / c.adSales * 100) : 0;
+    c.roas = (c.adSpend > 0) ? (c.adSales / c.adSpend) : 0;
+    c.ctr  = (c.impressions > 0) ? (c.adClicks / c.impressions * 100) : 0;
+    c.cvr  = (c.adClicks > 0) ? (c.orders / c.adClicks * 100) : 0;
+    c.tacos = (c.revenue > 0) ? (c.adSpend / c.revenue * 100) : 0;
+    c.organicPct = (c.revenue > 0) ? ((c.revenue - c.adSales) / c.revenue * 100) : 0;
+  });
+  var wkSet = {};
+  Object.keys(WEEKLY_CUBE).forEach(function(k){ wkSet[k.split('||')[1]] = 1; });
+  WEEKLY_WEEKS = Object.keys(wkSet).sort();
+}
 
 
 function handleUpload(type, inp) {
@@ -2190,6 +2394,13 @@ function processBusinessReport(rows) {
     agg[pid][mo][wk].s += sessions;
     agg[pid][mo][wk].c += clicks;
 
+    // ── WEEKLY CUBE (formulated layer) ──
+    var iw = isoWeekFromDate(dt);
+    var ln = getLineByPid(pid);
+    if (ln && iw) {
+      setWeeklyCube(ln, iw, {revenue: rev, units: units, sessions: sessions, pageViews: clicks});
+    }
+
     // Daily tracking
     var dateKey = parts[1]+'-'+parts[2].padStart(2,'0')+'-'+parts[3].padStart(2,'0');
     allDates[dateKey] = true;
@@ -2290,11 +2501,13 @@ function processBusinessReport(rows) {
     updated++;
   }
   console.log('BR processed: '+updated+' products updated from '+Object.keys(agg).length+' mapped');
+  recomputeWeeklyDerived();
   // Re-render everything
   renderOvKpi();
   renderAmzKpi();
   renderFlkKpi();
   renderAll();
+  renderUnifiedWeeklyTable();
 }
 
 
@@ -2320,21 +2533,54 @@ function matchFkProduct(title) {
 }
 
 
+// ── ROBUST CSV LINE PARSER (handles quoted commas) ───────────────────────────
+function parseCSVLine(line) {
+  var res = [], cur = '', inQ = false;
+  for (var i = 0; i < line.length; i++) {
+    var c = line[i];
+    if (c === '"') {
+      if (inQ && line[i + 1] === '"') { cur += '"'; i++; }
+      else { inQ = !inQ; }
+    } else if (c === ',' && !inQ) {
+      res.push(cur);
+      cur = '';
+    } else {
+      cur += c;
+    }
+  }
+  res.push(cur);
+  return res.map(function(v) {
+    v = v.trim();
+    if (v.startsWith('="') && v.endsWith('"')) v = v.slice(2, -1);
+    return v;
+  });
+}
+
+function findCol(col, names) {
+  for (var i = 0; i < names.length; i++) {
+    var n = names[i];
+    for (var k in col) {
+      if (k.indexOf(n) >= 0) return col[k];
+    }
+  }
+  return -1;
+}
+
 // ── UNIFIED ADS REPORT PROCESSOR ─────────────────────────────────────────────
 function processUnifiedAdsReport(text, fname) {
   var lines = text.split(/\r?\n/);
   if (lines.length < 2) return;
 
-  var headers = lines[0].split(',').map(function(h){ return h.trim().toLowerCase().replace(/^"+|"+$/g,''); });
+  var headers = parseCSVLine(lines[0]).map(function(h){ return h.trim().toLowerCase().replace(/^"+|"+$/g,''); });
   var col = {};
   headers.forEach(function(h, i){ col[h] = i; });
 
   var need = ['date','advertised product id','total cost','sales','units sold','impressions','clicks','ad product','campaign name','purchases'];
   var missing = need.filter(function(n){ return col[n] === undefined; });
   if (missing.length) {
-    console.warn('[ADS] Missing columns:', missing);
+    console.warn('[ADS] Missing columns:', missing, 'Available:', headers.slice(0,20));
     var ust = document.getElementById('ust-ads');
-    if (ust) ust.textContent = 'Error: wrong CSV format';
+    if (ust) ust.textContent = 'Error: wrong CSV format — missing ' + missing.join(', ');
     return;
   }
 
@@ -2375,18 +2621,32 @@ function processUnifiedAdsReport(text, fname) {
     return dt.getFullYear() + '-W' + (wk < 10 ? '0' : '') + wk;
   }
 
+  // Use Week/Year columns directly if present (much more reliable)
+  var hasWeekCol = col['week'] !== undefined;
+  var hasYearCol = col['year'] !== undefined;
+
   // Reset state
   ADS_STATE.cube = {};
   ADS_STATE.termCube = {};
   var weekSet = {};
 
   var total = lines.length;
-  var CHUNK = 10000;
+  var CHUNK = 8000;
   var idx = 1;
   var processed = 0;
 
   var hasTerm = col['search term'] !== undefined;
   var colTerm = hasTerm ? col['search term'] : -1;
+  var colAsin = col['advertised product id'];
+  var colDate = col['date'];
+  var colAdProd = col['ad product'];
+  var colCamp = col['campaign name'];
+  var colCost = col['total cost'];
+  var colSales = col['sales'];
+  var colImpr = col['impressions'];
+  var colClicks = col['clicks'];
+  var colPurch = col['purchases'];
+  var colUnits = col['units sold'];
 
   function processChunk() {
     var end = Math.min(idx + CHUNK, total);
@@ -2394,30 +2654,36 @@ function processUnifiedAdsReport(text, fname) {
       var line = lines[i];
       if (!line || !line.trim()) continue;
 
-      // Fast split — handle simple CSV (no quoted commas in our report)
-      var row = line.split(',');
-      if (row.length < headers.length) continue;
+      var row = parseCSVLine(line);
+      if (row.length < 5) continue;
 
-      var asin = (row[col['advertised product id']] || '').trim().replace(/^"+|"+$/g,'');
+      var asin = (row[colAsin] || '').trim().replace(/^"+|"+$/g,'');
       var prodId = ASIN_MAP[asin];
       if (!prodId) continue;
       var ln = pid2line[prodId];
       if (!ln) continue;
 
-      var date = (row[col['date']] || '').trim().replace(/^"+|"+$/g,'');
-      var week = isoWeek(date);
+      var week;
+      if (hasWeekCol && hasYearCol) {
+        var yr = String((row[col['year']] || '').trim()).replace(/^"+|"+$/g,'');
+        var wk = String((row[col['week']] || '0').trim()).padStart(2, '0');
+        week = yr + '-W' + wk;
+      } else {
+        var date = (row[colDate] || '').trim().replace(/^"+|"+$/g,'');
+        week = isoWeek(date);
+      }
       if (!week) continue;
 
-      var adType = normAd(row[col['ad product']]);
-      var campName = (row[col['campaign name']] || '').trim().replace(/^"+|"+$/g,'');
+      var adType = normAd(row[colAdProd]);
+      var campName = (row[colCamp] || '').trim().replace(/^"+|"+$/g,'');
       var intent = detectIntent(campName);
 
-      var spend = pn(row[col['total cost']]);
-      var sales = pn(row[col['sales']]);
-      var impr = pn(row[col['impressions']]);
-      var clicks = pn(row[col['clicks']]);
-      var orders = pn(row[col['purchases']]);
-      var units = pn(row[col['units sold']]);
+      var spend = pn(row[colCost]);
+      var sales = pn(row[colSales]);
+      var impr = pn(row[colImpr]);
+      var clicks = pn(row[colClicks]);
+      var orders = pn(row[colPurch]);
+      var units = pn(row[colUnits]);
 
       var key = ln + '||' + adType + '||' + intent + '||' + week;
       if (!ADS_STATE.cube[key]) {
@@ -2441,6 +2707,11 @@ function processUnifiedAdsReport(text, fname) {
         }
       }
 
+      // ── WEEKLY CUBE (formulated layer) ──
+      if (ln && week) {
+        setWeeklyCube(ln, week, {adSpend: spend, adSales: sales, impressions: impr, adClicks: clicks, orders: orders, adUnits: units});
+      }
+
       processed++;
     }
     idx = end;
@@ -2458,7 +2729,9 @@ function processUnifiedAdsReport(text, fname) {
       if (uslot) uslot.classList.add('ok');
       if (ust) ust.textContent = (fname || 'Unified Ads') + ' · ' + processed.toLocaleString() + ' rows · ' + ADS_STATE.weeks.length + ' wks';
       console.log('[ADS] Done. Rows:', processed, 'Weeks:', ADS_STATE.weeks.length, 'Cube keys:', Object.keys(ADS_STATE.cube).length);
+      recomputeWeeklyDerived();
       renderAdsPanel();
+      renderUnifiedWeeklyTable();
     }
   }
 
