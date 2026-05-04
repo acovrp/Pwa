@@ -783,15 +783,18 @@ function getVal(channelData, metric, col) {
     var validArr = arr.filter(function(v){return v!==null});
     var total = validArr.reduce(function(a,b){return a+b}, 0);
     if (isRateMetric(metric)) return total / validArr.length;
-    // Avg toggle or Daily gran → always daily avg
-    if (S.display === 'avg' || S.gran === 'daily') {
+    // Daily gran → daily avg
+    if (S.gran === 'daily') {
       return total / (col.partial ? col.daysSoFar : col.days);
     }
-    // Weekly gran + Sum → avg per week
+    // Weekly gran → per-week avg (Sum and Avg behave the same — weekly is already normalized)
     if (S.gran === 'weekly') {
       return total / (col.partial ? (col.weeksSoFar || validArr.length) : (col.weeks || validArr.length));
     }
-    // Monthly + Sum → total
+    // Monthly gran: Avg = daily avg, Sum = month total
+    if (S.display === 'avg') {
+      return total / (col.partial ? col.daysSoFar : col.days);
+    }
     return total;
   }
 
