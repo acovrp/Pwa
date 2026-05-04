@@ -2360,106 +2360,109 @@ function sfRender() {
   else if (SF.view === 'keywords') sfKeywords(el, ds);
 }
 
-var SQP_METRIC = 'imp'; // active metric tab: imp | click | purchase
+var SQP_SORT = 'rank'; // rank | click | conv | delta
 
 function sfSqpTrend(el) {
   var title = document.getElementById('sf-section-title');
-  var desc = document.getElementById('sf-section-desc');
-  if (title) title.textContent = 'SleepyCat · Search Query Performance Trend';
+  var desc  = document.getElementById('sf-section-desc');
+  if (title) title.textContent = 'SC Organic Search Presence';
   if (!BA_SQP) {
     if (desc) desc.textContent = 'Not loaded — runs automatically at 7:30 AM via agent';
-    el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-secondary);font-size:13px">BA SQP data not yet available.<br>It auto-loads once the daily agent runs and pushes ba_sqp.json.</div>';
+    el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-secondary);font-size:13px">BA data not yet available.<br>It auto-loads once the daily agent runs and pushes ba_sqp.json.</div>';
     return;
   }
-  var terms = BA_SQP.terms || [];
-  var weeks = BA_SQP.weeks || [];
-  var month = BA_SQP.month || '';
+  var terms   = (BA_SQP.terms || []).slice();
+  var periods = BA_SQP.periods || [];
   var q = ((document.getElementById('sf-kw-search') || {}).value || '').trim().toLowerCase();
   if (q) terms = terms.filter(function(t){ return t.term.toLowerCase().indexOf(q) >= 0; });
 
-  var wLbls = weeks.map(function(w) {
-    var d = new Date(w + 'T00:00:00');
-    return d.toLocaleString('en', {month:'short'}).substring(0,3) + ' ' + d.getDate();
-  });
-
-  // KPI: monthly totals for top metric
-  var mKey = SQP_METRIC === 'imp' ? 'imp' : SQP_METRIC === 'click' ? 'click' : 'purchase';
-  var mLabel = SQP_METRIC === 'imp' ? 'Imp Share' : SQP_METRIC === 'click' ? 'Click Share' : 'Purch Share';
-  var mUnit = '%';
-
-  // Metric tabs
-  function mTab(id, label) {
-    return '<button onclick="SQP_METRIC=\''+id+'\';sfSqpTrend(document.getElementById(\'sf-main-tbl\'))" '+
-      'style="padding:4px 12px;border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;font-weight:600;margin-right:4px;'+
-      (SQP_METRIC===id?'background:#7F77DD;color:#fff;border-color:#7F77DD':'background:#f8fafc;color:var(--text-secondary)')+
+  // Sort controls
+  function sBtn(id, label) {
+    return '<button onclick="SQP_SORT=\''+id+'\';sfSqpTrend(document.getElementById(\'sf-main-tbl\'))" '+
+      'style="padding:3px 10px;border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;margin-right:4px;'+
+      (SQP_SORT===id?'background:#7F77DD;color:#fff;border-color:#7F77DD':'background:#f8fafc;color:var(--text-secondary)')+
       '">'+label+'</button>';
   }
 
+  var latest = periods[periods.length - 1] || '';
+  var prev   = periods.length > 1 ? periods[periods.length - 2] : '';
+
+  // Sort
+  terms.sort(function(a, b) {
+    if (SQP_SORT === 'rank')  return (a.rank || 999999) - (b.rank || 999999);
+    var aL = (a.by_period && a.by_period[latest]) || {};
+    var bL = (b.by_period && b.by_period[latest]) || {};
+    if (SQP_SORT === 'click') return (bL.click_share || 0) - (aL.click_share || 0);
+    if (SQP_SORT === 'conv')  return (bL.conv_share  || 0) - (aL.conv_share  || 0);
+    if (SQP_SORT === 'delta' && prev) {
+      var aP = (a.by_period && a.by_period[prev]) || {};
+      var bP = (b.by_period && b.by_period[prev]) || {};
+      var da = (aL.click_share || 0) - (aP.click_share || 0);
+      var db = (bL.click_share || 0) - (bP.click_share || 0);
+      return db - da;
+    }
+    return (a.rank || 999999) - (b.rank || 999999);
+  });
+
+  var moLabels = periods.map(function(p) {
+    var parts = p.split('-'); return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(parts[1])-1] + ' ' + parts[0];
+  });
+
   if (desc) desc.innerHTML =
-    (month ? '<span style="color:var(--text-secondary)">Month: ' + month + '</span> &nbsp;·&nbsp; ' : '') +
-    (weeks.length ? wLbls[0] + ' → ' + wLbls[wLbls.length-1] + ' &nbsp;·&nbsp; ' : '') +
-    terms.length + ' terms &nbsp;&nbsp; ' +
-    mTab('imp','Imp Share') + mTab('click','Click Share') + mTab('purchase','Purch Share');
+    '<span style="color:var(--text-secondary)">' + terms.length + ' SC terms</span> &nbsp;·&nbsp; ' +
+    (periods.length ? moLabels.join(' vs ') : '') + ' &nbsp;&nbsp; ' +
+    'Sort: ' + sBtn('rank','Search Vol') + sBtn('click','Click Share') + sBtn('conv','Conv Share') + (prev ? sBtn('delta','MoM Delta') : '');
 
   if (!terms.length) {
     el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-secondary)">No terms match filter</div>';
     return;
   }
 
-  // Sort by LW value of selected metric descending
-  terms = terms.slice().sort(function(a, b) {
-    var aW = a.weekly || [], bW = b.weekly || [];
-    var av = aW.length ? (aW[aW.length-1][mKey] || 0) : ((a.monthly || {})[mKey] || 0);
-    var bv = bW.length ? (bW[bW.length-1][mKey] || 0) : ((b.monthly || {})[mKey] || 0);
-    return bv - av;
-  });
-
-  function wkTd(cur, prev) {
-    var d = prev !== null ? (cur - prev).toFixed(1) : null;
-    var ac = d !== null ? (parseFloat(d) > 0 ? '#065f46' : parseFloat(d) < 0 ? '#b91c1c' : '#6c757d') : '';
-    var bg = d !== null ? (parseFloat(d) > 0 ? '#d1fae5' : parseFloat(d) < 0 ? '#fee2e2' : '') : '';
-    return '<td style="text-align:right;white-space:nowrap">' + cur.toFixed(1) + mUnit +
-      (d !== null && d != '0.0' ? '<br><span style="font-size:9px;padding:0 4px;border-radius:6px;background:' + bg + ';color:' + ac + '">' + (parseFloat(d)>0?'+':'') + d + 'pp</span>' : '') +
-      '</td>';
+  function posBadge(pos) {
+    if (!pos) return '—';
+    var c = pos===1?'#065f46':pos===2?'#1d4ed8':'#78350f';
+    var bg= pos===1?'#d1fae5':pos===2?'#dbeafe':'#fef3c7';
+    return '<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:'+bg+';color:'+c+';font-weight:700">#'+pos+'</span>';
+  }
+  function delta(cur, prv) {
+    if (!prv || !cur) return '';
+    var d = (cur - prv).toFixed(1);
+    if (d === '0.0') return '';
+    var pos = parseFloat(d) > 0;
+    return '<br><span style="font-size:9px;padding:0 4px;border-radius:6px;background:'+(pos?'#d1fae5':'#fee2e2')+';color:'+(pos?'#065f46':'#b91c1c')+'">'+(pos?'+':'')+d+'pp</span>';
   }
 
-  var h = '<table><colgroup><col style="min-width:200px"><col style="width:90px"><col style="width:50px">';
-  weeks.forEach(function() { h += '<col style="width:80px">'; });
-  h += '<col style="width:80px"><col style="width:80px"></colgroup>';
-  h += '<thead><tr>';
-  h += '<th>Search Term</th><th>Category</th><th style="text-align:right">Rank</th>';
-  weeks.forEach(function(w, i) {
-    var lbl = i === 0 ? 'W-' + (weeks.length - 1) : i === weeks.length - 1 ? 'LW' : 'W-' + (weeks.length - 1 - i);
-    h += '<th style="text-align:right' + (i===0?';border-left:2px solid #e5e7eb':'') + '">' + lbl + '<br><span style="font-size:10px;font-weight:400">' + wLbls[i] + '</span></th>';
+  var h = '<table><colgroup><col style="min-width:180px"><col style="width:55px">';
+  periods.forEach(function() { h += '<col style="width:55px"><col style="width:75px"><col style="width:75px">'; });
+  h += '</colgroup><thead><tr>';
+  h += '<th>Search Term</th><th style="text-align:right">Vol Rank</th>';
+  periods.forEach(function(p, i) {
+    var lbl = moLabels[i];
+    h += '<th style="text-align:center;border-left:2px solid #e5e7eb" colspan="3">' + lbl + '</th>';
   });
-  if (!weeks.length) h += '<th style="text-align:right">Monthly</th>';
-  h += '<th style="text-align:right">Monthly<br>' + mLabel + '</th>';
+  h += '</tr><tr><th></th><th></th>';
+  periods.forEach(function() {
+    h += '<th style="text-align:center;border-left:2px solid #e5e7eb;font-size:10px">Pos</th>';
+    h += '<th style="text-align:right;font-size:10px">Click%</th>';
+    h += '<th style="text-align:right;font-size:10px">Conv%</th>';
+  });
   h += '</tr></thead><tbody>';
 
-  terms.slice(0, 50).forEach(function(t) {
-    var wks = t.weekly || [];
-    // Pad to weeks.length if some periods missing
-    var wkVals = weeks.map(function(w) {
-      var found = null;
-      for (var i = 0; i < wks.length; i++) { if (wks[i].period === w) { found = wks[i]; break; } }
-      return found ? found[mKey] : null;
-    });
-    var mo = t.monthly ? t.monthly[mKey] : null;
-
+  terms.slice(0, 100).forEach(function(t) {
     h += '<tr>';
-    h += '<td style="font-weight:500">' + t.term + (t.dept ? '' : '') + '</td>';
-    h += '<td style="font-size:11px;color:var(--text-secondary)">' + (t.dept || '—') + '</td>';
-    h += '<td style="text-align:right;font-size:11px">' + (t.rank || '—') + '</td>';
-    wkVals.forEach(function(v, i) {
-      if (v === null) {
-        h += '<td style="text-align:right' + (i===0?';border-left:2px solid #e5e7eb':'') + ';color:#9ca3af">—</td>';
+    h += '<td style="font-weight:500;white-space:nowrap;overflow:hidden;max-width:180px;text-overflow:ellipsis" title="'+t.term+'">'+t.term+'</td>';
+    h += '<td style="text-align:right;font-size:11px;color:var(--text-secondary)">' + (t.rank ? '#' + t.rank.toLocaleString('en-IN') : '—') + '</td>';
+    periods.forEach(function(p, pi) {
+      var d = (t.by_period && t.by_period[p]) || null;
+      var pPrev = pi > 0 ? ((t.by_period && t.by_period[periods[pi-1]]) || null) : null;
+      if (!d) {
+        h += '<td style="border-left:2px solid #e5e7eb;text-align:center;color:#9ca3af">—</td><td style="color:#9ca3af;text-align:right">—</td><td style="color:#9ca3af;text-align:right">—</td>';
       } else {
-        var prev = i > 0 ? wkVals[i-1] : null;
-        h += (i===0 ? '<td style="text-align:right;border-left:2px solid #e5e7eb">' + v.toFixed(1) + mUnit + '</td>' : wkTd(v, prev));
+        h += '<td style="border-left:2px solid #e5e7eb;text-align:center">' + posBadge(d.position) + '</td>';
+        h += '<td style="text-align:right;font-weight:600">' + (d.click_share||0).toFixed(1) + '%' + delta(d.click_share, pPrev && pPrev.click_share) + '</td>';
+        h += '<td style="text-align:right">' + (d.conv_share||0).toFixed(1) + '%' + delta(d.conv_share, pPrev && pPrev.conv_share) + '</td>';
       }
     });
-    if (!weeks.length) h += '<td style="text-align:right">' + (mo !== null ? mo.toFixed(1) + mUnit : '—') + '</td>';
-    h += '<td style="text-align:right;font-weight:600;color:#7F77DD">' + (mo !== null ? mo.toFixed(1) + mUnit : '—') + '</td>';
     h += '</tr>';
   });
 
