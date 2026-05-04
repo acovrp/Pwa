@@ -430,7 +430,6 @@ tbody tr.l3-row.open{display:table-row}
           <button class="metric-tab" onclick="setAmzMetric('adspend',this)">Ad Spend</button>
           <button class="metric-tab" onclick="setAmzMetric('acos',this)">ACOS</button>
           <button class="metric-tab" onclick="setAmzMetric('tacos',this)">TACoS</button>
-          <button class="metric-tab" onclick="setAmzMetric('ctr',this)">CTR</button>
           <button class="metric-tab" onclick="setAmzMetric('cvr',this)">CVR</button>
         </div>
       </div>
@@ -1955,8 +1954,12 @@ function processBusinessReport(rows) {
     var ch = p.channels.amz;
     for (var mo in agg[pid]) {
       var wks = agg[pid][mo];
-      ch.units[mo] = wks.map(function(w){return w.u;});
-      ch.revenue[mo] = wks.map(function(w){return w.r;});
+      var moCfg = MONTHS.find(function(m){ return m.key === mo; });
+      var wso = (moCfg && moCfg.partial) ? (moCfg.weeksSoFar || 1) : 4;
+      ch.units[mo] = wks.map(function(w, wi){ return wi < wso ? w.u : null; });
+      ch.revenue[mo] = wks.map(function(w, wi){ return wi < wso ? w.r : null; });
+      if (!ch.sessions) ch.sessions = {};
+      ch.sessions[mo] = wks.map(function(w, wi){ return wi < wso ? w.s : null; });
     }
     // Set recent = most recent month in uploaded data
     var moOrder = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
@@ -1967,6 +1970,7 @@ function processBusinessReport(rows) {
     if (latestMo) {
       ch.units.recent = ch.units[latestMo].slice();
       ch.revenue.recent = ch.revenue[latestMo].slice();
+      if (ch.sessions && ch.sessions[latestMo]) ch.sessions.recent = ch.sessions[latestMo].slice();
     }
     updated++;
   }
