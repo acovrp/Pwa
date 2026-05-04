@@ -153,6 +153,37 @@ When brain is updated:
 - Always syntax-check after JS edits: extract script, run `node --check`
 - Deploy: edit locally → git push → GitHub Pages auto-updates in ~60 seconds
 
+### Gran Toggle + Sum/Avg Semantics (fixed May 2026)
+- **Monthly + Sum** = month total
+- **Monthly + Avg** = daily avg (`total / daysSoFar`)
+- **Weekly** = per-week avg regardless of Sum/Avg toggle (`total / weeksSoFar`) — "weekly" is already normalized
+- **Daily** = daily avg regardless of Sum/Avg toggle (`total / daysSoFar`)
+- Sum/Avg toggle is only meaningful in Monthly gran; in Weekly/Daily it has no visible effect
+- Logic lives in `getVal()` month branch (~line 778)
+
+### Month Expand (+ button) — WoW Inline (May 2026)
+- Each month column header has a `+` / `−` button to expand into weekly sub-columns inline
+- Partial current month expands into individual day columns using `RECENT_DAY_LABELS[]`
+- `S.expandedMonths{}` tracks which months are expanded; cleared automatically on gran change via `setGran()`
+- `RECENT_DAY_LABELS[]` populated by `processBusinessReport` with last N date labels from actual CSV data (e.g. "May 2", "May 3", "May 4")
+- `wowInlineBadge(curr, prev, metric)` renders delta badge (▲/▼/→ + %) in expanded week cells
+- Amazon: Ses.WoW and Ads.WoW removed as separate metric tabs — WoW data accessible via + expansion
+- Flipkart: WoW still accessible as "WoW ▸" metric tab (separate FK WoW accordion view)
+
+### Partial Month Fix (May 2026)
+- `processBusinessReport` now dynamically reads actual dates from CSV and updates `MONTHS[partial].daysSoFar` and `weeksSoFar`
+- Fixes wrong May daily avg (was dividing by hardcoded 4 days when only 1 day of data existed)
+- Do NOT hardcode `daysSoFar` in `MONTHS` config — it is always overwritten at parse time
+
+### WoW Data Pipeline (wow_data.json)
+- Source Excel: `C:\Excel\FK WOW OVERALL.xlsx`, `C:\Excel\az WOW.xlsx`, `C:\Users\User\Downloads\Proofs\docs\AZ WOW ADS.xlsx`
+- Extractor: `C:\Excel\extract_wow.py` → outputs `C:\Excel\wow_data.json` (~250KB)
+- Sheets extracted: FK ads WoW, FK kw-type WoW, FK adsTotal, FK placement, FK SOV, AZ sessions (product+category), AZ ads (productWise, typeView, ordersByProduct)
+- Dashboard global: `WOW_DATA` — loaded from `data/wow_data.json` on page open
+- FK WoW rendered by `wowRenderFK()` in Flipkart "WoW ▸" tab
+- AZ sessions/ads in `wow_data.json` available but not yet merged into Amazon product table rows
+- To refresh: `python C:\Excel\extract_wow.py` → copy `C:\Excel\wow_data.json` to `pwa-push\data\wow_data.json` → git commit + push
+
 ### GitHub / Git state
 - Dead repos deleted: `sleepycat-dashboard`, `sleepycat-pwa`, `agent1` — these no longer exist on GitHub
 - Git identity: `Aman Verma <av291297@gmail.com>` (set globally)

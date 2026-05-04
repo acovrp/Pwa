@@ -119,6 +119,14 @@ Aman's single-file HTML command center, built personally and maintained by the a
 - `BA_SQP` global + auto-fetch of `data/ba_sqp.json` on page load
 - `data/ba_sqp.json` and `data/st_report.csv` committed to repo — auto-loaded on page open
 
+### WoW Inline + Gran Toggle (May 2026 — this session)
+- **Month `+` expand**: each month column has expand button → expands inline to weekly sub-cols; current partial month expands to individual day columns (`RECENT_DAY_LABELS`)
+- **Amazon metric tabs cleanup**: removed Ses.WoW and Ads.WoW as separate tabs — WoW trend accessible via + expansion on any month. Amazon tabs now: Units, Revenue, Org%, Ad Spend, ACOS, TACoS, CTR, CVR
+- **FK WoW**: still accessible via "WoW ▸" metric tab button in Flipkart section
+- **Gran toggle semantics fixed**: Monthly+Sum=total, Monthly+Avg=daily avg, Weekly=per-week avg (toggle irrelevant), Daily=daily avg (toggle irrelevant). Avg toggle only changes values in Monthly mode.
+- **Partial month denominator fix**: `processBusinessReport` now dynamically reads actual CSV dates and sets `MONTHS[partial].daysSoFar` + `weeksSoFar` — no more hardcoded wrong denominators
+- **WoW data source**: `C:\Excel\extract_wow.py` extracts FK+AZ weekly data from Excel → `C:\Excel\wow_data.json` → copied to `pwa-push\data\wow_data.json`. AZ sessions/ads data available in json but not yet merged into AZ product table rows (pending design decision).
+
 ### Bugs fixed in v7.2 (reference — don't re-introduce)
 - setFunnel() now scoped to `.funnel-type-nav .ftn-btn` (was corrupting SF tab active states)
 - Funnel data is monotonically decreasing (search > imp > click > atc > purchase)
