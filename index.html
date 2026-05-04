@@ -314,7 +314,6 @@ tbody tr.l3-row.open{display:table-row}
 <div class="filter-bar">
   <div class="toggle-group" id="gran-toggle">
     <button class="toggle-btn" onclick="setGran('daily',this)">Daily</button>
-    <button class="toggle-btn" onclick="setGran('weekly',this)">Weekly</button>
     <button class="toggle-btn active" onclick="setGran('monthly',this)">Monthly</button>
   </div>
   <div class="filter-sep"></div>
@@ -758,7 +757,7 @@ function getColLabel(col) {
   }
   if (col.expanded) return col.label + partial;
   if (col.type === 'week') return col.label + partial;
-  if (col.type === 'month') {
+  if (col.type === 'month' && S.gran === 'monthly') {
     var expandBtn = ' <button onclick="event.stopPropagation();toggleMonthExpand(\''+col.key+'\')" style="background:#e5e7eb;border:none;border-radius:3px;cursor:pointer;padding:0 4px;font-size:10px;line-height:14px;vertical-align:middle;color:#374151">+</button>';
     return col.label + partial + expandBtn;
   }
@@ -1616,6 +1615,7 @@ function renderQcom(){
 // ══════════════════════════════════════════════
 function setGran(v,btn){
   S.gran=v;
+  S.expandedMonths = {}; // reset per-month expansion when switching granularity
   document.querySelectorAll('#gran-toggle .toggle-btn').forEach(function(b){b.classList.remove('active')});
   btn.classList.add('active');
   renderTables();
