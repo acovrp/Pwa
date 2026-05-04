@@ -100,8 +100,9 @@ Aman's single-file HTML command center, built personally and maintained by the a
 | Source | What it feeds |
 |---|---|
 | Amazon Business Report | Units, revenue, sessions, CVR by ASIN |
-| SP Search Terms report | Keyword spend, clicks, ACOS |
-| Brand Analytics (Search Catalog Performance) | Search funnel — impression/click/ATC/purchase share |
+| SP Search Terms report (manual CSV or Ads API) | Keyword spend, clicks, ACOS → Keyword Intelligence tab |
+| Brand Analytics — Search Catalog Performance (manual CSV) | Search funnel — impression/click/ATC/purchase share → Search Funnel tab (Category Demand, SC Funnel Share, etc.) |
+| Brand Analytics — Search Terms Report (SP-API auto) | SC organic search presence — 147 search terms, position #1/2/3, click share, conv share, month-over-month → SC Organic Search Presence view |
 | Flipkart Sales export | Units, GMV, returns |
 | Snowflake | Ad spend (SP ASIN coverage ~62% due to keyword-level vs product-ad-level row mixing) |
 
@@ -110,6 +111,13 @@ Aman's single-file HTML command center, built personally and maintained by the a
 - `processFkAdsReport` now writes per-product adspend + TACoS to `PRODUCTS.flk` and re-renders
 - FK KPI row: replaced hardcoded Cancel Rate/FBF Share with live FK Ad Spend + FK TACoS cards
 - FK product table: added Ad Spend and TACoS metric tabs
+- Removed all hardcoded placeholders: FLAGS, QCOM_AVAIL, QCom/Other KPI cards, header subtitle, status badge — all dynamic or TBD
+- `updateHeaderStats()`: live date range + AMZ/FK revenue computed from PRODUCTS data
+- Keyword Intelligence: date badge `#kw-date-range` shows report date range when ST data loads
+- Search Funnel: `#sf-status` and `#sf-section-desc` show actual date range from SF.dates (fixed hardcoded "Jan 2024 - Feb 2026")
+- New view "SC Organic Search Presence" in Search Funnel tab: shows 147 terms where SC appears in top 3 clicks, March vs April MoM, position badge, click share%, conv share%, 4 sort modes
+- `BA_SQP` global + auto-fetch of `data/ba_sqp.json` on page load
+- `data/ba_sqp.json` and `data/st_report.csv` committed to repo — auto-loaded on page open
 
 ### Bugs fixed in v7.2 (reference — don't re-introduce)
 - setFunnel() now scoped to `.funnel-type-nav .ftn-btn` (was corrupting SF tab active states)
@@ -252,7 +260,7 @@ Aman is building the Marketplace OS into a product — an AI-led marketplace man
 | Google Sheets | Search funnel data layer | 26 months BA data |
 | Brand Analytics | Search catalog performance | Monthly/weekly exports |
 | Snowflake | Ad spend data | ~62% coverage (known gap) |
-| Marketplace OS | Consolidated dashboard | v7.2, hosted at https://acovrp.github.io/Pwa/ |
+| Marketplace OS | Consolidated dashboard | v7.3, hosted at https://acovrp.github.io/Pwa/ |
 
 ### SP-API (Mark1) — Now Live (May 2026)
 - App: Mark1, Developer Central, Private developer, self-authorized (1 of 10 slots used)
@@ -262,15 +270,23 @@ Aman is building the Marketplace OS into a product — an AI-led marketplace man
 - All reports are GZIP compressed — decode with `utf-8-sig` (handles BOM on first column)
 - Daily runner: `run_spapi.py` + `spapi_module.py` in agent folder
 - Output: `agent_data/spapi_data.json` — listings + traffic + callouts
-- After each daily pull, `run_spapi.py` copies `agent_data/br_history.csv` → `pwa-push/data/br_history.csv` → git commits + pushes → Cloudflare redeploys → team sees fresh data automatically
+- After each daily pull, `run_spapi.py` pushes three files to `pwa-push/data/` via git: `br_history.csv` (sessions/traffic), `st_report.csv` (search terms — Ads API when authorized, else watch folder), `ba_sqp.json` (SC organic search presence). Each committed + pushed separately → Cloudflare redeploys → team sees fresh data automatically
 - Historical backfill: `spapi_history.py` — pulls day-by-day GET_SALES_AND_TRAFFIC_REPORT from Jan 1 2026, checkpointed (safe to kill and resume). 56,264 rows pulled as of May 1 2026.
 - `data/br_history.csv` is committed in `acovrp/Pwa` repo — dashboard auto-loads it on open (relative path first, localhost fallback)
 - Telegram callouts: pending wiring. Task Scheduler scheduling: pending.
 
-**What SP-API pulls:**
+**What SP-API pulls (daily at 7:30 AM via run_spapi.py):**
 - `GET_MERCHANT_LISTINGS_ALL_DATA` — 1165 ASINs, TSV, fields: `asin1`, `status`, `seller-sku`, `item-name`, `quantity`
 - `GET_SALES_AND_TRAFFIC_REPORT` — 536 ASINs with traffic, JSON, fields: `sessions`, `buyBoxPercentage`, `unitSessionPercentage` (CVR), `pageViews`, `unitsOrdered`, `orderedProductSales`
+- `GET_BRAND_ANALYTICS_SEARCH_TERMS_REPORT` — filters 713K rows for SC ASINs → 147 SC search terms with position, click share, conv share. Saves `agent_data/ba_sqp.json` → pushed to `pwa-push/data/ba_sqp.json`. Pulls last 2 complete months.
 - Does NOT cover ad spend — stays Snowflake/ad report CSVs
+
+**Advertising API (pending authorization):**
+- `AdsAPIClient` class built in `spapi_module.py` — uses `advertising-api-eu.amazon.com`
+- Blocked: existing LWA app (Mark1) not registered for `advertising::campaign_management` scope
+- To fix: register app at `advertising.amazon.com → Tools → Advertising API` OR contact Amazon Ads account manager to enable API access
+- Once authorized: will auto-pull SP Search Term report (30 days) → `agent_data/st_report.csv` → `pwa-push/data/st_report.csv` → Keyword Intelligence tab auto-populates
+- Current fallback: watch folder scan for manually-dropped search term CSV
 
 **Critical calibration note:**
 - `GET_MERCHANT_LISTINGS_ALL_DATA` `status` column = merchant-fulfilled status only

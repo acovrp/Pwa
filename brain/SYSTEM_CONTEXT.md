@@ -52,8 +52,12 @@ C:\Users\User\Downloads\pwa-push\
 ├── .nojekyll                 ← GitHub Pages config
 ├── CLAUDE.md                 ← Claude Code reads on startup
 ├── data/
-│   └── br_history.csv        ← 56,264 rows Jan 1–May 1 2026. Auto-loaded by dashboard.
-│                               Updated daily by run_spapi.py push after each SP-API pull.
+│   ├── br_history.csv        ← 56,264 rows Jan 1–May 1 2026. Auto-loaded by dashboard.
+│   │                           Updated daily by run_spapi.py push after each SP-API pull.
+│   ├── ba_sqp.json           ← SC organic search presence (147 terms, last 2 months).
+│   │                           Auto-loaded by dashboard. Updated daily by run_spapi.py.
+│   └── st_report.csv         ← SP Search Terms for Keyword Intelligence tab.
+│                               Updated daily — Ads API when authorized, else watch folder fallback.
 ├── brain/                    ← MASTER BRAIN — all tools read from here
 │   ├── sleepycat_brain.md    ← Business knowledge, who Aman is, channels, metrics
 │   └── agent_context.md      ← How the agent behaves, L0/L1/L2 rules
