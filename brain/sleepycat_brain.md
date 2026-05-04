@@ -277,8 +277,8 @@ Aman is building the Marketplace OS into a product — an AI-led marketplace man
 
 **What SP-API pulls (daily at 7:30 AM via run_spapi.py):**
 - `GET_MERCHANT_LISTINGS_ALL_DATA` — 1165 ASINs, TSV, fields: `asin1`, `status`, `seller-sku`, `item-name`, `quantity`
-- `GET_SALES_AND_TRAFFIC_REPORT` — 536 ASINs with traffic, JSON, fields: `sessions`, `buyBoxPercentage`, `unitSessionPercentage` (CVR), `pageViews`, `unitsOrdered`, `orderedProductSales`
-- `GET_BRAND_ANALYTICS_SEARCH_TERMS_REPORT` — filters 713K rows for SC ASINs → 147 SC search terms with position, click share, conv share. Saves `agent_data/ba_sqp.json` → pushed to `pwa-push/data/ba_sqp.json`. Pulls last 2 complete months.
+- `GET_SALES_AND_TRAFFIC_REPORT` — 536 ASINs with traffic, JSON, fields: `sessions`, `buyBoxPercentage`, `unitSessionPercentage` (CVR), `pageViews`, `unitsOrdered`, `orderedProductSales`. **Critical**: `dataEndTime` must be `T23:59:59Z` — if it equals `dataStartTime` (`T00:00:00Z`), Amazon silently returns an empty report. Bug was live May 2–3 2026; fixed May 4 2026.
+- `GET_BRAND_ANALYTICS_SEARCH_TERMS_REPORT` — filters 713K rows for SC ASINs → 147 SC search terms with position, click share, conv share. Saves `agent_data/ba_sqp.json` → pushed to `pwa-push/data/ba_sqp.json`. Pulls last 2 complete months. **API limitation**: does NOT return total search volume, total clicks, or absolute click counts — only `clickShare%` and `conversionShare%`. Seller Central BA UI shows more columns that are not exposed in the API.
 - Does NOT cover ad spend — stays Snowflake/ad report CSVs
 
 **Advertising API (pending authorization):**
