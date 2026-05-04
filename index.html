@@ -1990,6 +1990,34 @@ function processBusinessReport(rows) {
     var p = d.split('-');
     RECENT_DAY_LABELS.push(monthNames[parseInt(p[1])] + ' ' + parseInt(p[2]));
   });
+
+  // Update MONTHS partial config based on actual data — fixes daily avg denominator
+  var dateMoMap = {}; // mo -> Set of days seen
+  sortedDates.forEach(function(d) {
+    var p = d.split('-');
+    var mo = moMap[p[1]] || moMap[String(parseInt(p[1]))];
+    if (!mo) return;
+    if (!dateMoMap[mo]) dateMoMap[mo] = {};
+    dateMoMap[mo][parseInt(p[2])] = true;
+  });
+  MONTHS.forEach(function(m) {
+    if (dateMoMap[m.key]) {
+      var days = Object.keys(dateMoMap[m.key]).map(Number);
+      var actualDays = days.length;
+      var maxDay = Math.max.apply(null, days);
+      var actualWeeks = Math.min(4, Math.floor((maxDay - 1) / 7) + 1);
+      // Only update if this is genuinely a partial month (not a complete month)
+      if (actualDays < m.days) {
+        m.partial = true;
+        m.daysSoFar = actualDays;
+        m.weeksSoFar = actualWeeks;
+      } else {
+        m.partial = false;
+        m.daysSoFar = m.days;
+        m.weeksSoFar = m.weeks;
+      }
+    }
+  });
   
   // Update PRODUCTS
   var updated = 0;
