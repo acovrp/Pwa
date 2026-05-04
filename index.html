@@ -198,13 +198,6 @@ tbody tr.l3-row.open{display:table-row}
 .dsb-sample{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
 
 /* ── WOW ANALYSIS ── */
-.wow-sub-nav{display:flex;gap:4px;margin-bottom:var(--gap)}
-.wow-sub-btn{padding:7px 16px;border:1px solid var(--border);border-radius:5px;background:#fff;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-secondary);transition:all .15s}
-.wow-sub-btn:hover{background:#f0f4ff;border-color:#aab9ff}
-.wow-sub-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.wow-filters{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:var(--gap);padding:10px 16px;background:#fff;border-radius:var(--radius);border:1px solid var(--border)}
-.wow-filters label{font-size:11px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
-.wow-filters select{padding:5px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text-primary);background:#fff}
 .wow-table{width:100%;border-collapse:collapse;font-size:12px}
 .wow-table th{text-align:right;padding:8px 10px;background:#f8f9fa;border-bottom:2px solid var(--border);color:var(--text-secondary);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;position:sticky;top:0;z-index:5}
 .wow-table th:first-child{text-align:left}
@@ -378,7 +371,6 @@ tbody tr.l3-row.open{display:table-row}
   <button class="tab-btn" onclick="switchTab('qcom',this)"><span class="ch-dot" style="background:#28a745"></span>Quick Commerce</button>
   <button class="tab-btn" onclick="switchTab('other',this)"><span class="ch-dot" style="background:#4C72B0"></span>Other Channels</button>
   <button class="tab-btn" onclick="switchTab('searchfunnel',this)"><span class="ch-dot" style="background:#7F77DD"></span>Search Funnel</button>
-  <button class="tab-btn" onclick="switchTab('wow',this)"><span class="ch-dot" style="background:#f59e0b"></span>WoW Analysis</button>
 </div>
 
 <!-- ══════════════════════════════════════════
@@ -498,6 +490,47 @@ tbody tr.l3-row.open{display:table-row}
     </div>
     <div class="tbl-wrap" id="kw-main-tbl"></div>
   </div>
+
+  <!-- AZ Sessions WoW -->
+  <div class="section-card">
+    <div class="section-hd">
+      <div>
+        <div class="section-title">Amazon · Sessions Week over Week</div>
+        <div class="section-desc">Business Report — SC sessions, organic share, CVR, orders by week</div>
+      </div>
+      <div class="section-controls">
+        <select id="wow-azs-prod" onchange="wowState.azsProd=this.value;wowRenderSection('azs')" style="padding:5px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px">
+          <option value="all">All Products</option>
+        </select>
+      </div>
+    </div>
+    <div class="tbl-wrap" style="max-height:70vh" id="wow-azs-tbl">
+      <div style="padding:30px;text-align:center;color:var(--text-secondary);font-size:12px">WoW data not loaded</div>
+    </div>
+  </div>
+
+  <!-- AZ Ads WoW -->
+  <div class="section-card">
+    <div class="section-hd">
+      <div>
+        <div class="section-title">Amazon · Ads Week over Week</div>
+        <div class="section-desc">Campaign Manager — SP/SD performance, impressions, spend, ROAS, ACOS by week</div>
+      </div>
+      <div class="section-controls">
+        <select id="wow-aza-type" onchange="wowState.azaType=this.value;wowRenderSection('aza')" style="padding:5px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px">
+          <option value="all">Total</option>
+          <option value="SP">SP</option>
+          <option value="SD">SD</option>
+          <option value="Branded">Branded</option>
+          <option value="Generic">Generic</option>
+          <option value="Competition">Competition</option>
+        </select>
+      </div>
+    </div>
+    <div class="tbl-wrap" style="max-height:70vh" id="wow-aza-tbl">
+      <div style="padding:30px;text-align:center;color:var(--text-secondary);font-size:12px">WoW data not loaded</div>
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════════
@@ -519,6 +552,34 @@ tbody tr.l3-row.open{display:table-row}
       </div>
     </div>
     <div class="tbl-wrap" id="flk-product-tbl"></div>
+  </div>
+
+  <!-- FK WoW -->
+  <div class="section-card">
+    <div class="section-hd">
+      <div>
+        <div class="section-title">Flipkart · Week over Week</div>
+        <div class="section-desc" id="wow-fk-status">WoW data loading…</div>
+      </div>
+      <div class="section-controls">
+        <select id="wow-fk-prod" onchange="wowState.fkProd=this.value;wowRenderSection('fk')" style="padding:5px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px">
+          <option value="all">All Products</option>
+          <option value="Hybrid Latex Mattress">Hybrid Latex</option>
+          <option value="Original Mattress">Original</option>
+          <option value="Switch Dual Mattress">Switch Dual</option>
+          <option value="Ultima Mattress">Ultima</option>
+          <option value="Pillows">Pillows</option>
+        </select>
+        <select id="wow-fk-type" onchange="wowState.fkType=this.value;wowRenderSection('fk')" style="padding:5px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px">
+          <option value="all">All Types</option>
+          <option value="GENERIC">Generic</option>
+          <option value="COMPETITION">Competition</option>
+        </select>
+      </div>
+    </div>
+    <div class="tbl-wrap" style="max-height:70vh" id="wow-fk-tbl">
+      <div style="padding:30px;text-align:center;color:var(--text-secondary);font-size:12px">WoW data not loaded — ensure data/wow_data.json is in repo</div>
+    </div>
   </div>
 </div>
 
@@ -570,27 +631,6 @@ tbody tr.l3-row.open{display:table-row}
     <div class="tbl-wrap" id="sf-main-tbl" style="max-height:80vh"></div>
   </div>
   <div id="sf-empty" style="display:none;padding:40px;text-align:center;color:var(--text-secondary);font-size:13px">Upload Brand Analytics Search Catalog Performance report to populate this tab</div>
-</div>
-
-<!-- ══════════════════════════════════════════
-     WOW ANALYSIS TAB
-══════════════════════════════════════════ -->
-<div id="tab-wow" class="tab-content">
-  <div class="wow-sub-nav">
-    <button class="wow-sub-btn active" onclick="wowSetView('fk',this)">FK Ads</button>
-    <button class="wow-sub-btn" onclick="wowSetView('azs',this)">AZ Sessions</button>
-    <button class="wow-sub-btn" onclick="wowSetView('aza',this)">AZ Ads</button>
-  </div>
-  <div class="wow-filters" id="wow-filters"></div>
-  <div id="wow-status" style="font-size:11px;color:#15803d;margin-bottom:8px;min-height:16px"></div>
-  <div class="section-card">
-    <div class="tbl-wrap" style="max-height:80vh">
-      <div id="wow-table-wrap"></div>
-    </div>
-  </div>
-  <div id="wow-empty" class="wow-empty" style="display:none">
-    WoW data not loaded.<br>Push <code>data/wow_data.json</code> to the repo, then reload.
-  </div>
 </div>
 
 <!-- FLAG DETAIL PANEL -->
@@ -1624,7 +1664,6 @@ function switchTab(t,el){
   var tc=document.getElementById('tab-'+t); if(tc)tc.classList.add('active');
   el.classList.add('active');
   S.activeTab=t;
-  if(t==='wow') wowRender();
 }
 
 // Re-render all product tables when gran/display/view changes
@@ -2727,11 +2766,10 @@ SF.dates = Object.keys(SF.data).sort();
 
 
 // ══════════════════════════════════════════════
-// WOW ANALYSIS
+// WOW ANALYSIS (embedded in AZ + FK tabs)
 // ══════════════════════════════════════════════
 var WOW_DATA = null;
 var wowState = {
-  view: 'fk',
   fkProd: 'all', fkType: 'all',
   azsProd: 'all',
   azaType: 'all',
@@ -2790,13 +2828,6 @@ function wowMonthExpanded(mk, order) {
   return wowState.months[mk];
 }
 
-function wowSetView(v, el) {
-  wowState.view = v;
-  document.querySelectorAll('.wow-sub-btn').forEach(function(b){ b.classList.remove('active'); });
-  el.classList.add('active');
-  wowRender();
-}
-
 function wowToggleMonth(mk) {
   wowState.months[mk] = !wowState.months[mk];
   var rows = document.querySelectorAll('.wow-week-row[data-month="' + mk + '"]');
@@ -2806,30 +2837,15 @@ function wowToggleMonth(mk) {
   if (tog) tog.textContent = exp ? '▼' : '▶';
 }
 
-function wowRenderFilters() {
-  var el = document.getElementById('wow-filters');
-  if (!el) return;
-  if (!WOW_DATA) { el.innerHTML = '<span style="font-size:11px;color:#aaa">Loading…</span>'; return; }
-  var h = '';
-  if (wowState.view === 'fk') {
-    var prods = ['all','Hybrid Latex Mattress','Original Mattress','Switch Dual Mattress','Ultima Mattress','Pillows'];
-    h += '<label>Product</label><select onchange="wowState.fkProd=this.value;wowRender()">';
-    prods.forEach(function(p){ h += '<option value="'+p+'"'+(wowState.fkProd===p?' selected':'')+'>'+(p==='all'?'All Products':p)+'</option>'; });
-    h += '</select>&nbsp;&nbsp;<label>Campaign Type</label><select onchange="wowState.fkType=this.value;wowRender()">';
-    ['all','GENERIC','COMPETITION'].forEach(function(t){ h += '<option value="'+t+'"'+(wowState.fkType===t?' selected':'')+'>'+(t==='all'?'All Types':t)+'</option>'; });
-    h += '</select>';
-  } else if (wowState.view === 'azs') {
-    var azp = ['all'].concat(Object.keys(WOW_DATA.az_sessions.product));
-    h += '<label>Product</label><select onchange="wowState.azsProd=this.value;wowRender()">';
-    azp.forEach(function(p){ h += '<option value="'+p+'"'+(wowState.azsProd===p?' selected':'')+'>'+(p==='all'?'All Products':p)+'</option>'; });
-    h += '</select>';
-  } else if (wowState.view === 'aza') {
-    h += '<label>Type</label><select onchange="wowState.azaType=this.value;wowRender()">';
-    ['all','SP','SD','Branded','Generic','Competition'].forEach(function(t){ h += '<option value="'+t+'"'+(wowState.azaType===t?' selected':'')+'>'+(t==='all'?'Total':t)+'</option>'; });
-    h += '</select>';
-  }
-  el.innerHTML = h;
+function wowPopulateAzsProdSelect() {
+  if (!WOW_DATA) return;
+  var sel = document.getElementById('wow-azs-prod');
+  if (!sel || sel.options.length > 1) return;
+  Object.keys(WOW_DATA.az_sessions.product).forEach(function(p) {
+    var o = document.createElement('option'); o.value = p; o.textContent = p; sel.appendChild(o);
+  });
 }
+
 
 function wowBuildTable(weeks, cols, getRow, prefix) {
   var g = wowGroupByMonth(prefix, weeks);
@@ -2998,20 +3014,20 @@ function wowRenderAZA() {
   return wowBuildTable(weeks, cols, getRow, 'aza_');
 }
 
-function wowRender() {
-  if (!WOW_DATA) {
-    var tw = document.getElementById('wow-table-wrap'); if(tw) tw.innerHTML='';
-    var ef = document.getElementById('wow-empty'); if(ef) ef.style.display='block';
-    wowRenderFilters();
-    return;
+function wowRenderSection(section) {
+  if (!WOW_DATA) return;
+  if (section === 'fk' || section === 'all') {
+    var el = document.getElementById('wow-fk-tbl');
+    if (el) el.innerHTML = wowRenderFK();
   }
-  var ef = document.getElementById('wow-empty'); if(ef) ef.style.display='none';
-  wowRenderFilters();
-  var html = '';
-  if (wowState.view === 'fk') html = wowRenderFK();
-  else if (wowState.view === 'azs') html = wowRenderAZS();
-  else if (wowState.view === 'aza') html = wowRenderAZA();
-  var tw = document.getElementById('wow-table-wrap'); if(tw) tw.innerHTML = html;
+  if (section === 'azs' || section === 'all') {
+    var el = document.getElementById('wow-azs-tbl');
+    if (el) el.innerHTML = wowRenderAZS();
+  }
+  if (section === 'aza' || section === 'all') {
+    var el = document.getElementById('wow-aza-tbl');
+    if (el) el.innerHTML = wowRenderAZA();
+  }
 }
 
 // WoW auto-load
@@ -3022,10 +3038,11 @@ function wowRender() {
       WOW_DATA = data;
       var fkWks = Object.keys(data.fk.ads||{}).length;
       var azWks = Object.keys(data.az_ads.typeView||{}).length;
-      var st = document.getElementById('wow-status');
-      if(st) st.textContent = 'WoW loaded — FK: '+fkWks+' weeks | AZ Ads: '+azWks+' weeks';
-      if(S.activeTab==='wow') wowRender();
-      console.log('[WoW] Loaded wow_data.json — FK '+fkWks+'w AZ '+azWks+'w');
+      var st = document.getElementById('wow-fk-status');
+      if(st) st.textContent = fkWks+' weeks · Mar–Dec 2025';
+      wowPopulateAzsProdSelect();
+      wowRenderSection('all');
+      console.log('[WoW] Loaded — FK '+fkWks+'w AZ '+azWks+'w');
     })
     .catch(function(e){ console.warn('[WoW] wow_data.json not found:', e.message); });
 })();
