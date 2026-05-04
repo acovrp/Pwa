@@ -213,6 +213,34 @@ tbody tr.l3-row.open{display:table-row}
 .delta.neu{color:#6c757d}
 .wow-val{font-weight:600}
 .wow-empty{padding:40px;text-align:center;color:var(--text-secondary);font-size:13px}
+
+/* ── Ads Intelligence Panel ───────────────────────────────────────────────── */
+.ads-kpi-row{display:flex;flex-wrap:wrap;gap:10px;padding:12px 0 8px}
+.ads-kpi{background:var(--card);border:1px solid var(--border,#2a2a3a);border-radius:8px;padding:10px 14px;min-width:90px;text-align:center}
+.ads-kpi-val{font-size:1.15rem;font-weight:700;color:var(--text)}
+.ads-kpi-lbl{font-size:.7rem;color:var(--muted,#888);margin-top:2px;text-transform:uppercase;letter-spacing:.04em}
+.ads-kpi.pos .ads-kpi-val{color:var(--pos,#4caf50)}
+.ads-kpi.neg .ads-kpi-val{color:var(--neg,#f44336)}
+.ads-kpi.warn .ads-kpi-val{color:var(--warn,#ff9800)}
+.ads-section-lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted,#888);margin:10px 0 4px;font-weight:600}
+.ads-intent-wrap{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.ads-intent-row{display:flex;align-items:center;gap:8px}
+.ads-intent-lbl{width:90px;font-size:.8rem;color:var(--text);flex-shrink:0}
+.ads-intent-bar-wrap{flex:1;background:var(--border,#2a2a3a);border-radius:4px;height:8px;overflow:hidden}
+.ads-intent-bar{background:var(--accent,#4C72B0);height:100%;border-radius:4px;transition:width .3s}
+.ads-intent-stat{font-size:.75rem;color:var(--muted,#888);white-space:nowrap}
+.ads-fmt-wrap{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.ads-fmt-badge{background:var(--card);border:1px solid var(--border,#2a2a3a);border-radius:8px;padding:8px 14px;text-align:center;min-width:80px}
+.ads-fmt-name{font-size:.7rem;text-transform:uppercase;color:var(--muted,#888);letter-spacing:.05em}
+.ads-fmt-spend{font-size:1rem;font-weight:700;color:var(--text);margin:2px 0}
+.ads-fmt-share{font-size:.75rem;color:var(--accent,#4C72B0)}
+.ads-terms-wrap{margin-top:8px}
+.ads-terms-title{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted,#888);margin-bottom:6px;font-weight:600}
+.ads-terms-tbl{width:100%;border-collapse:collapse;font-size:.78rem}
+.ads-terms-tbl th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border,#2a2a3a);color:var(--muted,#888);font-weight:600;text-transform:uppercase;font-size:.68rem;letter-spacing:.04em}
+.ads-terms-tbl td{padding:5px 8px;border-bottom:1px solid var(--border,#1a1a2a);color:var(--text)}
+.ads-terms-tbl tr:hover td{background:var(--hover,rgba(255,255,255,.04)}
+.kpi-filter-sel{background:var(--card,#1a1a2e);color:var(--text,#eee);border:1px solid var(--border,#2a2a3a);border-radius:6px;padding:4px 8px;font-size:.78rem;cursor:pointer}
 </style>
 </head>
 <body>
@@ -261,6 +289,12 @@ tbody tr.l3-row.open{display:table-row}
         <div><div class="uslot-name">SD Campaign</div><div class="uslot-st" id="ust-sd">Spend · Views · Attributed</div></div>
       </div>
       <input type="file" accept=".csv,.tsv" id="u-sd" style="display:none" onchange="handleUpload('sd',this)">
+      
+      <div class="uslot" id="uslot-ads" onclick="document.getElementById('u-ads').click()" title="Ads Console → Reports → All Campaigns (unified SP+SD+SB)">
+        <span class="uslot-icon">📊</span>
+        <div><div class="uslot-name">Unified Ads</div><div class="uslot-st" id="ust-ads">SP+SD+SB · ACOS · Intent</div></div>
+      </div>
+      <input type="file" accept=".csv,.tsv" id="u-ads" style="display:none" onchange="handleUpload('ads',this)">
       <div class="uslot" id="uslot-st" onclick="document.getElementById('u-st').click()" title="Ads Console → Reports → Sponsored Products → Search Term">
         <span class="uslot-icon">🔎</span>
         <div><div class="uslot-name">Search Terms</div><div class="uslot-st" id="ust-st">Keywords · CVR · ACOS</div></div>
@@ -437,6 +471,36 @@ tbody tr.l3-row.open{display:table-row}
     </div>
     <div class="tbl-wrap" id="amz-product-tbl"></div>
   </div>
+
+  <!-- ADS INTELLIGENCE PANEL -->
+  <div class="section-card" id="ads-panel-card" style="display:none">
+    <div class="section-hd">
+      <div class="section-title">Amazon · Ads Intelligence</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="ads-f-weeks" onchange="renderAdsPanel()" class="kpi-filter-sel">
+          <option value="0">All weeks</option>
+          <option value="4">Last 4 wks</option>
+          <option value="8">Last 8 wks</option>
+          <option value="13">Last 13 wks</option>
+        </select>
+        <select id="ads-f-adtype" onchange="renderAdsPanel()" class="kpi-filter-sel">
+          <option value="">All formats</option>
+          <option value="SP">SP</option>
+          <option value="SD">SD</option>
+          <option value="SB">SB</option>
+        </select>
+        <select id="ads-f-intent" onchange="renderAdsPanel()" class="kpi-filter-sel">
+          <option value="">All intent</option>
+          <option value="Branded">Branded</option>
+          <option value="Generic">Generic</option>
+          <option value="Competition">Competition</option>
+          <option value="Auto">Auto</option>
+        </select>
+      </div>
+    </div>
+    <div id="ads-panel"></div>
+  </div>
+
 
   <!-- ═══ UNIFIED: KEYWORD SOV + INTELLIGENCE ═══ -->
   
@@ -1618,6 +1682,128 @@ function setView(v,btn){
   renderTables();
 }
 
+
+// ── RENDER ADS INTELLIGENCE PANEL ────────────────────────────────────────────
+function renderAdsPanel() {
+  var card = document.getElementById('ads-panel-card');
+  var el = document.getElementById('ads-panel');
+  if (!el) return;
+
+  if (!ADS_STATE.ready) {
+    if (card) card.style.display = 'none';
+    return;
+  }
+  if (card) card.style.display = '';
+
+  var fLine   = S.line  || '';
+  var fAdType = (document.getElementById('ads-f-adtype')  || {}).value || '';
+  var fIntent = (document.getElementById('ads-f-intent')  || {}).value || '';
+  var fWks    = parseInt((document.getElementById('ads-f-weeks') || {}).value || '0');
+
+  var weeks = ADS_STATE.weeks;
+  if (fWks > 0) weeks = weeks.slice(-fWks);
+  var weekOk = {};
+  weeks.forEach(function(w){ weekOk[w] = 1; });
+
+  // Aggregate
+  var totSp=0, totSl=0, totIm=0, totCk=0, totOr=0;
+  var byI = {Branded:{sp:0,sl:0}, Generic:{sp:0,sl:0}, Competition:{sp:0,sl:0}, Auto:{sp:0,sl:0}};
+  var byF = {SP:{sp:0,sl:0}, SD:{sp:0,sl:0}, SB:{sp:0,sl:0}};
+
+  Object.keys(ADS_STATE.cube).forEach(function(key) {
+    var p = key.split('||');
+    var ln=p[0], at=p[1], it=p[2], wk=p[3];
+    if (fLine && ln !== fLine) return;
+    if (fAdType && at !== fAdType) return;
+    if (fIntent && it !== fIntent) return;
+    if (fWks > 0 && !weekOk[wk]) return;
+    var d = ADS_STATE.cube[key];
+    totSp+=d.sp; totSl+=d.sl; totIm+=d.im; totCk+=d.ck; totOr+=d.or;
+    if (byI[it]) { byI[it].sp+=d.sp; byI[it].sl+=d.sl; }
+    if (byF[at]) { byF[at].sp+=d.sp; byF[at].sl+=d.sl; }
+  });
+
+  var acos = totSl > 0 ? (totSp / totSl * 100) : 0;
+  var roas = totSp > 0 ? (totSl / totSp)        : 0;
+  var ctr  = totIm > 0 ? (totCk / totIm * 100)  : 0;
+  var cvr  = totCk > 0 ? (totOr / totCk * 100)  : 0;
+
+  function inr(v) { return '₹' + Math.round(v).toLocaleString('en-IN'); }
+  function pct(v) { return v.toFixed(1) + '%'; }
+  function fx(v)  { return v.toFixed(2) + 'x'; }
+  function kpi(label, val, cls) {
+    return '<div class="ads-kpi' + (cls ? ' ' + cls : '') + '"><div class="ads-kpi-val">' + val + '</div><div class="ads-kpi-lbl">' + label + '</div></div>';
+  }
+
+  var acosClass = acos < 15 ? 'pos' : acos < 25 ? 'warn' : 'neg';
+  var roasClass = roas > 5  ? 'pos' : roas > 3  ? 'warn' : 'neg';
+
+  // Intent bars
+  function intentBar(lbl, d) {
+    var sharePct = totSp > 0 ? (d.sp / totSp * 100) : 0;
+    var badgeAcos = d.sl > 0 ? (d.sp / d.sl * 100) : 0;
+    return '<div class="ads-intent-row"><span class="ads-intent-lbl">' + lbl + '</span>'
+      + '<div class="ads-intent-bar-wrap"><div class="ads-intent-bar" style="width:' + Math.min(sharePct, 100).toFixed(1) + '%"></div></div>'
+      + '<span class="ads-intent-stat">' + inr(d.sp) + ' &middot; ' + pct(sharePct) + ' share &middot; ACOS ' + pct(badgeAcos) + '</span></div>';
+  }
+
+  // Format badges
+  function fmtBadge(lbl, d) {
+    var sh = totSp > 0 ? (d.sp / totSp * 100) : 0;
+    return '<div class="ads-fmt-badge"><div class="ads-fmt-name">' + lbl + '</div>'
+      + '<div class="ads-fmt-spend">' + inr(d.sp) + '</div>'
+      + '<div class="ads-fmt-share">' + pct(sh) + '</div></div>';
+  }
+
+  // Top search terms
+  var termRows = [];
+  Object.keys(ADS_STATE.termCube).forEach(function(k) {
+    var d = ADS_STATE.termCube[k];
+    if (fLine && d.line !== fLine) return;
+    if (fWks > 0) return; // skip term filter on week for now (terms aren't week-bucketed)
+    termRows.push(d);
+  });
+  termRows.sort(function(a,b){ return b.sp - a.sp; });
+  var top20 = termRows.slice(0, 20);
+  var termTableHtml = '';
+  if (top20.length) {
+    termTableHtml = '<div class="ads-terms-title">Top Search Terms (SP · by Spend)</div>'
+      + '<table class="ads-terms-tbl"><thead><tr><th>Search Term</th><th>Spend</th><th>Sales</th><th>ACOS</th><th>Orders</th><th>CPC</th></tr></thead><tbody>'
+      + top20.map(function(d) {
+          var a = d.sl > 0 ? (d.sp / d.sl * 100).toFixed(1) : '-';
+          var cpc = d.ck > 0 ? (d.sp / d.ck).toFixed(2) : '-';
+          return '<tr><td>' + d.term + '</td><td>' + inr(d.sp) + '</td><td>' + inr(d.sl) + '</td><td>' + a + '%</td><td>' + d.or + '</td><td>₹' + cpc + '</td></tr>';
+        }).join('')
+      + '</tbody></table>';
+  }
+
+  el.innerHTML =
+    '<div class="ads-kpi-row">'
+      + kpi('Ad Spend', inr(totSp), '')
+      + kpi('Ad Sales', inr(totSl), '')
+      + kpi('ACOS', pct(acos), acosClass)
+      + kpi('ROAS', fx(roas), roasClass)
+      + kpi('Impressions', Math.round(totIm).toLocaleString('en-IN'), '')
+      + kpi('CTR', pct(ctr), '')
+      + kpi('CVR', pct(cvr), '')
+      + kpi('Orders', Math.round(totOr).toLocaleString('en-IN'), '')
+    + '</div>'
+    + '<div class="ads-section-lbl">Intent Breakdown</div>'
+    + '<div class="ads-intent-wrap">'
+      + intentBar('Branded', byI.Branded)
+      + intentBar('Generic', byI.Generic)
+      + intentBar('Competition', byI.Competition)
+      + intentBar('Auto', byI.Auto)
+    + '</div>'
+    + '<div class="ads-section-lbl">Format Breakdown</div>'
+    + '<div class="ads-fmt-wrap">'
+      + fmtBadge('SP', byF.SP)
+      + fmtBadge('SD', byF.SD)
+      + fmtBadge('SB', byF.SB)
+    + '</div>'
+    + (termTableHtml ? '<div class="ads-terms-wrap">' + termTableHtml + '</div>' : '');
+}
+
 function applyFilters(){
   S.cat=document.getElementById('f-cat').value;
   S.line=document.getElementById('f-line').value;
@@ -1628,6 +1814,7 @@ function applyFilters(){
   renderFlkKpi();
   renderTables();
   renderKwTable();
+  renderAdsPanel();
 }
 
 function setOvMetric(v,btn){
@@ -1785,9 +1972,30 @@ var BA_SQP = null;
 
 // ── UPLOAD HANDLER ──────────────────────────────────────────
 var UPLOADED = {};
+var ADS_STATE = {
+  ready: false,
+  cube: {},      // "line||adType||intent||week" → {sp,sl,im,ck,or,un}
+  termCube: {},  // "term||line" → {sp,ck,or,sl}  (SP only)
+  weeks: []      // sorted unique ISO weeks
+};
+
 
 function handleUpload(type, inp) {
   var file = inp.files[0]; if (!file) return;
+  if (type === 'ads') {
+    var adsFile = inp.files[0];
+    if (!adsFile) return;
+    markSlot('ads', 0, adsFile.name);
+    var ust = document.getElementById('ust-ads');
+    if (ust) ust.textContent = 'Loading…';
+    var adsReader = new FileReader();
+    adsReader.onload = function(ev) {
+      processUnifiedAdsReport(ev.target.result, adsFile.name);
+    };
+    adsReader.readAsText(adsFile, 'UTF-8');
+    return;
+  }
+
   var reader = new FileReader();
   reader.onload = function(e) {
     try {
@@ -2111,21 +2319,180 @@ function matchFkProduct(title) {
   return null;
 }
 
+
+// ── UNIFIED ADS REPORT PROCESSOR ─────────────────────────────────────────────
+function processUnifiedAdsReport(text, fname) {
+  var lines = text.split(/\r?\n/);
+  if (lines.length < 2) return;
+
+  var headers = lines[0].split(',').map(function(h){ return h.trim().toLowerCase().replace(/^"+|"+$/g,''); });
+  var col = {};
+  headers.forEach(function(h, i){ col[h] = i; });
+
+  var need = ['date','advertised product id','total cost','sales','units sold','impressions','clicks','ad product','campaign name','purchases'];
+  var missing = need.filter(function(n){ return col[n] === undefined; });
+  if (missing.length) {
+    console.warn('[ADS] Missing columns:', missing);
+    var ust = document.getElementById('ust-ads');
+    if (ust) ust.textContent = 'Error: wrong CSV format';
+    return;
+  }
+
+  // Build prodId→line lookup once
+  var pid2line = {};
+  PRODUCTS.forEach(function(p){ pid2line[p.id] = p.line; });
+
+  function normAd(ap) {
+    if (!ap) return 'SP';
+    var s = ap.toString().toUpperCase();
+    if (s.indexOf('DISPLAY') >= 0) return 'SD';
+    if (s.indexOf('BRANDS') >= 0) return 'SB';
+    return 'SP';
+  }
+
+  function detectIntent(name) {
+    var n = (name || '').toUpperCase();
+    if (n.indexOf('SPPT') === 0 || n.indexOf('SBPT') === 0) return 'Branded';
+    if (/\|\s*BRANDED\s*\|/.test(n) || /\bBRANDED\b/.test(n) || /BRAND[\s-]?PROT/.test(n)) return 'Branded';
+    if (/COMPET/.test(n) || /\bCOMP\b/.test(n) || n.indexOf('SPCT') === 0 || n.indexOf('SDCT') === 0) return 'Competition';
+    if (/\bAUTO\b/.test(n) || /^SPA[\s|]/.test(n)) return 'Auto';
+    return 'Generic';
+  }
+
+  function pn(v) {
+    if (!v) return 0;
+    var n = parseFloat(String(v).replace(/[$,\s]/g,''));
+    return isNaN(n) ? 0 : n;
+  }
+
+  function isoWeek(d) {
+    var dt = new Date(d);
+    if (isNaN(dt)) return null;
+    dt.setHours(0,0,0,0);
+    dt.setDate(dt.getDate() + 3 - (dt.getDay() + 6) % 7);
+    var jan4 = new Date(dt.getFullYear(), 0, 4);
+    var wk = 1 + Math.round(((dt - jan4) / 86400000 - 3 + (jan4.getDay() + 6) % 7) / 7);
+    return dt.getFullYear() + '-W' + (wk < 10 ? '0' : '') + wk;
+  }
+
+  // Reset state
+  ADS_STATE.cube = {};
+  ADS_STATE.termCube = {};
+  var weekSet = {};
+
+  var total = lines.length;
+  var CHUNK = 10000;
+  var idx = 1;
+  var processed = 0;
+
+  var hasTerm = col['search term'] !== undefined;
+  var colTerm = hasTerm ? col['search term'] : -1;
+
+  function processChunk() {
+    var end = Math.min(idx + CHUNK, total);
+    for (var i = idx; i < end; i++) {
+      var line = lines[i];
+      if (!line || !line.trim()) continue;
+
+      // Fast split — handle simple CSV (no quoted commas in our report)
+      var row = line.split(',');
+      if (row.length < headers.length) continue;
+
+      var asin = (row[col['advertised product id']] || '').trim().replace(/^"+|"+$/g,'');
+      var prodId = ASIN_MAP[asin];
+      if (!prodId) continue;
+      var ln = pid2line[prodId];
+      if (!ln) continue;
+
+      var date = (row[col['date']] || '').trim().replace(/^"+|"+$/g,'');
+      var week = isoWeek(date);
+      if (!week) continue;
+
+      var adType = normAd(row[col['ad product']]);
+      var campName = (row[col['campaign name']] || '').trim().replace(/^"+|"+$/g,'');
+      var intent = detectIntent(campName);
+
+      var spend = pn(row[col['total cost']]);
+      var sales = pn(row[col['sales']]);
+      var impr = pn(row[col['impressions']]);
+      var clicks = pn(row[col['clicks']]);
+      var orders = pn(row[col['purchases']]);
+      var units = pn(row[col['units sold']]);
+
+      var key = ln + '||' + adType + '||' + intent + '||' + week;
+      if (!ADS_STATE.cube[key]) {
+        ADS_STATE.cube[key] = {sp:0, sl:0, im:0, ck:0, or:0, un:0};
+      }
+      var c = ADS_STATE.cube[key];
+      c.sp += spend; c.sl += sales; c.im += impr; c.ck += clicks; c.or += orders; c.un += units;
+
+      weekSet[week] = 1;
+
+      // Term cube (SP only, exclude auto-targets)
+      if (adType === 'SP' && hasTerm) {
+        var term = (row[colTerm] || '').trim().replace(/^"+|"+$/g,'').toLowerCase();
+        if (term && term !== '--' && term.indexOf('b0') !== 0 && term.indexOf('b09') !== 0) {
+          var tkey = term + '||' + ln;
+          if (!ADS_STATE.termCube[tkey]) {
+            ADS_STATE.termCube[tkey] = {sp:0, ck:0, or:0, sl:0, term:term, line:ln};
+          }
+          var tc = ADS_STATE.termCube[tkey];
+          tc.sp += spend; tc.ck += clicks; tc.or += orders; tc.sl += sales;
+        }
+      }
+
+      processed++;
+    }
+    idx = end;
+
+    var pct = Math.round(idx / total * 100);
+    var ust = document.getElementById('ust-ads');
+
+    if (idx < total) {
+      if (ust) ust.textContent = 'Processing… ' + pct + '%';
+      setTimeout(processChunk, 0);
+    } else {
+      ADS_STATE.weeks = Object.keys(weekSet).sort();
+      ADS_STATE.ready = true;
+      var uslot = document.getElementById('uslot-ads');
+      if (uslot) uslot.classList.add('ok');
+      if (ust) ust.textContent = (fname || 'Unified Ads') + ' · ' + processed.toLocaleString() + ' rows · ' + ADS_STATE.weeks.length + ' wks';
+      console.log('[ADS] Done. Rows:', processed, 'Weeks:', ADS_STATE.weeks.length, 'Cube keys:', Object.keys(ADS_STATE.cube).length);
+      renderAdsPanel();
+    }
+  }
+
+  processChunk();
+}
+
 function processSpReport(rows) {
   var hs=rows[0].map(function(h){return h.trim().toLowerCase().replace(/[^a-z0-9_ ]+/g,'');});
   function ci(){for(var i=0;i<arguments.length;i++)for(var j=0;j<hs.length;j++)if(hs[j].indexOf(arguments[i])>=0)return j;return -1;}
-  var iDate=ci('date','start date'), iAsin=ci('advertised asin','asin'), iSpend=ci('spend','cost');
-  var iSales=ci('14 day total sales','7 day total sales','attributed sales');
+  var iDate=ci('date','start date'), iAsin=ci('advertised asin','advertised product id','asin'), iSpend=ci('spend','cost');
+  var iSales=ci('14 day total sales','7 day total sales','attributed sales','sales');
   if (iAsin<0||iSpend<0) { console.warn('SP: missing ASIN or spend column'); return; }
-  var agg={}, moMap={'01':'jan','02':'feb','03':'mar','04':'apr','05':'may','1':'jan','2':'feb','3':'mar','4':'apr','5':'may'};
+  var agg={}, moMap={'01':'jan','02':'feb','03':'mar','04':'apr','05':'may','06':'jun','07':'jul','08':'aug','09':'sep','10':'oct','11':'nov','12':'dec','1':'jan','2':'feb','3':'mar','4':'apr','5':'may','6':'jun','7':'jul','8':'aug','9':'sep'};
+  var MON_NAME={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
   for (var i=1;i<rows.length;i++) {
     var r=rows[i], asin=(r[iAsin]||'').trim(), pid=ASIN_MAP[asin];
     if (!pid) continue;
-    var mo='jan', wk=0;
+    var mo=null, wk=0;
     if (iDate>=0) {
-      var parts=(r[iDate]||'').trim().match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
-      if (parts) { mo=moMap[parts[2]]||moMap[String(parseInt(parts[2]))]; if (!mo) continue; wk=Math.min(3,Math.floor((parseInt(parts[3])-1)/7)); }
+      var dtStr=(r[iDate]||'').trim();
+      var parts=dtStr.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+      if (parts) {
+        mo=moMap[parts[2]]||moMap[String(parseInt(parts[2]))];
+        wk=Math.min(3,Math.floor((parseInt(parts[3])-1)/7));
+      } else {
+        // Handle "Apr 23, 2026" or "Apr 23 2026" format
+        var m3=dtStr.match(/([a-zA-Z]{3})\s+(\d{1,2}),?\s*(\d{4})/);
+        if (m3) {
+          var mNum=MON_NAME[m3[1].toLowerCase()];
+          if (mNum) { mo=moMap[mNum]||moMap[String(mNum)]; wk=Math.min(3,Math.floor((parseInt(m3[2])-1)/7)); }
+        }
+      }
     }
+    if (!mo) continue;
     var sp=parseFloat((r[iSpend]||'0').replace(/[^\d.]/g,''))||0;
     var sl=iSales>=0?(parseFloat((r[iSales]||'0').replace(/[^\d.]/g,''))||0):0;
     if (!agg[pid]) agg[pid]={};
@@ -2310,6 +2677,7 @@ document.addEventListener('drop', function(e) {
     if (n.indexOf('search_term') >= 0 || n.indexOf('searchterm') >= 0) t = 'st';
     else if (n.indexOf('_sb_') >= 0 || n.indexOf('sponsored_brands') >= 0) t = 'sb';
     else if (n.indexOf('_sd_') >= 0 || n.indexOf('sponsored_display') >= 0) t = 'sd';
+        else if (n.indexOf('report') >= 0 && (n.indexOf('ads') >= 0 || n.indexOf('unified') >= 0)) t = 'ads';
     else if (n.indexOf('sponsored') >= 0 || n.indexOf('_sp_') >= 0 || n.indexOf('campaign') >= 0) t = 'sp';
     else if (n.indexOf('brand_analytics') >= 0 || n.indexOf('search_freq') >= 0) t = 'ba';
     else if (n.indexOf('flipkart') >= 0 || n.indexOf('seller_hub') >= 0) t = 'fk';
