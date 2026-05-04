@@ -196,6 +196,30 @@ tbody tr.l3-row.open{display:table-row}
 .dsb{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;margin-left:auto;flex-shrink:0;white-space:nowrap}
 .dsb-live{background:#dcfce7;color:#15803d;border:1px solid #86efac}
 .dsb-sample{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
+
+/* ── WOW ANALYSIS ── */
+.wow-sub-nav{display:flex;gap:4px;margin-bottom:var(--gap)}
+.wow-sub-btn{padding:7px 16px;border:1px solid var(--border);border-radius:5px;background:#fff;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-secondary);transition:all .15s}
+.wow-sub-btn:hover{background:#f0f4ff;border-color:#aab9ff}
+.wow-sub-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.wow-filters{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:var(--gap);padding:10px 16px;background:#fff;border-radius:var(--radius);border:1px solid var(--border)}
+.wow-filters label{font-size:11px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.wow-filters select{padding:5px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text-primary);background:#fff}
+.wow-table{width:100%;border-collapse:collapse;font-size:12px}
+.wow-table th{text-align:right;padding:8px 10px;background:#f8f9fa;border-bottom:2px solid var(--border);color:var(--text-secondary);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;position:sticky;top:0;z-index:5}
+.wow-table th:first-child{text-align:left}
+.wow-month-hdr td{background:#eef2ff;font-weight:700;font-size:12px;cursor:pointer;user-select:none;padding:8px 12px;border-top:2px solid #c7d2fe}
+.wow-month-hdr td:hover{background:#dde7ff}
+.wow-month-toggle{font-size:10px;margin-right:6px;display:inline-block}
+.wow-week-row td{padding:7px 10px;border-bottom:1px solid var(--border-light);text-align:right;white-space:nowrap}
+.wow-week-row td:first-child{text-align:left;color:var(--text-secondary);font-size:11px;padding-left:24px}
+.wow-week-row.hidden{display:none}
+.delta{font-size:10px;margin-left:4px;font-weight:600;padding:1px 4px;border-radius:3px}
+.delta.pos{color:#15803d;background:#dcfce7}
+.delta.neg{color:#b91c1c;background:#fee2e2}
+.delta.neu{color:#6c757d}
+.wow-val{font-weight:600}
+.wow-empty{padding:40px;text-align:center;color:var(--text-secondary);font-size:13px}
 </style>
 </head>
 <body>
@@ -354,6 +378,7 @@ tbody tr.l3-row.open{display:table-row}
   <button class="tab-btn" onclick="switchTab('qcom',this)"><span class="ch-dot" style="background:#28a745"></span>Quick Commerce</button>
   <button class="tab-btn" onclick="switchTab('other',this)"><span class="ch-dot" style="background:#4C72B0"></span>Other Channels</button>
   <button class="tab-btn" onclick="switchTab('searchfunnel',this)"><span class="ch-dot" style="background:#7F77DD"></span>Search Funnel</button>
+  <button class="tab-btn" onclick="switchTab('wow',this)"><span class="ch-dot" style="background:#f59e0b"></span>WoW Analysis</button>
 </div>
 
 <!-- ══════════════════════════════════════════
@@ -545,6 +570,27 @@ tbody tr.l3-row.open{display:table-row}
     <div class="tbl-wrap" id="sf-main-tbl" style="max-height:80vh"></div>
   </div>
   <div id="sf-empty" style="display:none;padding:40px;text-align:center;color:var(--text-secondary);font-size:13px">Upload Brand Analytics Search Catalog Performance report to populate this tab</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     WOW ANALYSIS TAB
+══════════════════════════════════════════ -->
+<div id="tab-wow" class="tab-content">
+  <div class="wow-sub-nav">
+    <button class="wow-sub-btn active" onclick="wowSetView('fk',this)">FK Ads</button>
+    <button class="wow-sub-btn" onclick="wowSetView('azs',this)">AZ Sessions</button>
+    <button class="wow-sub-btn" onclick="wowSetView('aza',this)">AZ Ads</button>
+  </div>
+  <div class="wow-filters" id="wow-filters"></div>
+  <div id="wow-status" style="font-size:11px;color:#15803d;margin-bottom:8px;min-height:16px"></div>
+  <div class="section-card">
+    <div class="tbl-wrap" style="max-height:80vh">
+      <div id="wow-table-wrap"></div>
+    </div>
+  </div>
+  <div id="wow-empty" class="wow-empty" style="display:none">
+    WoW data not loaded.<br>Push <code>data/wow_data.json</code> to the repo, then reload.
+  </div>
 </div>
 
 <!-- FLAG DETAIL PANEL -->
@@ -1577,6 +1623,8 @@ function switchTab(t,el){
   document.querySelectorAll('.tab-btn').forEach(function(x){x.classList.remove('active')});
   var tc=document.getElementById('tab-'+t); if(tc)tc.classList.add('active');
   el.classList.add('active');
+  S.activeTab=t;
+  if(t==='wow') wowRender();
 }
 
 // Re-render all product tables when gran/display/view changes
@@ -2672,6 +2720,311 @@ SF.dates = Object.keys(SF.data).sort();
   if (stEl) stEl.textContent = 'Pre-loaded | ' + SF.dates.length + ' periods (' + sfLbl(SF.dates[0]) + ' → ' + sfLbl(SF.dates[SF.dates.length-1]) + ')';
   markSlot('ba', 26000, 'BA 26mo pre-loaded');
   sfRender();
+})();
+
+
+// ══════════════════════════════════════════════
+// WOW ANALYSIS
+// ══════════════════════════════════════════════
+var WOW_DATA = null;
+var wowState = {
+  view: 'fk',
+  fkProd: 'all', fkType: 'all',
+  azsProd: 'all',
+  azaType: 'all',
+  months: {}
+};
+
+function wowParseWeekStart(wkStr) {
+  var p = wkStr.split(' - ')[0].trim().split('-');
+  return new Date(+p[2], +p[1]-1, +p[0]);
+}
+function wowMonthKey(prefix, wkStr) {
+  var dt = wowParseWeekStart(wkStr);
+  var mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][dt.getMonth()];
+  return prefix + mo + ' ' + dt.getFullYear();
+}
+function wowFmt(v, type) {
+  if (v == null) return '<span style="color:#aaa">—</span>';
+  if (type === 'inr') {
+    if (v >= 1e5) return '₹' + (v/1e5).toFixed(1) + 'L';
+    if (v >= 1e3) return '₹' + (v/1e3).toFixed(1) + 'K';
+    return '₹' + v.toFixed(0);
+  }
+  if (type === 'int') {
+    if (v >= 1e5) return (v/1e5).toFixed(1) + 'L';
+    if (v >= 1e3) return (v/1e3).toFixed(1) + 'K';
+    return Math.round(v).toString();
+  }
+  if (type === 'pct') return (v * 100).toFixed(1) + '%';
+  if (type === 'pct_raw') return v.toFixed(1) + '%';
+  if (type === 'x') return v.toFixed(2) + 'x';
+  if (type === '2f') return v.toFixed(2);
+  return v.toFixed(2);
+}
+function wowDelta(curr, prev, invertGood) {
+  if (curr == null || prev == null || prev === 0) return '';
+  var pct = (curr - prev) / Math.abs(prev) * 100;
+  if (Math.abs(pct) < 0.1) return '';
+  var isGood = invertGood ? pct < 0 : pct > 0;
+  var cls = isGood ? 'pos' : 'neg';
+  var sign = pct > 0 ? '▲' : '▼';
+  return '<span class="delta ' + cls + '">' + sign + Math.abs(pct).toFixed(1) + '%</span>';
+}
+function wowGroupByMonth(prefix, weeks) {
+  var groups = {}, order = [];
+  weeks.forEach(function(wk) {
+    var mk = wowMonthKey(prefix, wk);
+    if (!groups[mk]) { groups[mk] = []; order.push(mk); }
+    groups[mk].push(wk);
+  });
+  return { groups: groups, order: order };
+}
+function wowMonthExpanded(mk, order) {
+  if (wowState.months[mk] !== undefined) return wowState.months[mk];
+  var recent = order.slice(-3);
+  wowState.months[mk] = recent.indexOf(mk) >= 0;
+  return wowState.months[mk];
+}
+
+function wowSetView(v, el) {
+  wowState.view = v;
+  document.querySelectorAll('.wow-sub-btn').forEach(function(b){ b.classList.remove('active'); });
+  el.classList.add('active');
+  wowRender();
+}
+
+function wowToggleMonth(mk) {
+  wowState.months[mk] = !wowState.months[mk];
+  var rows = document.querySelectorAll('.wow-week-row[data-month="' + mk + '"]');
+  var tog = document.querySelector('[data-wow-toggle="' + mk + '"]');
+  var exp = wowState.months[mk];
+  rows.forEach(function(r){ r.classList.toggle('hidden', !exp); });
+  if (tog) tog.textContent = exp ? '▼' : '▶';
+}
+
+function wowRenderFilters() {
+  var el = document.getElementById('wow-filters');
+  if (!el) return;
+  if (!WOW_DATA) { el.innerHTML = '<span style="font-size:11px;color:#aaa">Loading…</span>'; return; }
+  var h = '';
+  if (wowState.view === 'fk') {
+    var prods = ['all','Hybrid Latex Mattress','Original Mattress','Switch Dual Mattress','Ultima Mattress','Pillows'];
+    h += '<label>Product</label><select onchange="wowState.fkProd=this.value;wowRender()">';
+    prods.forEach(function(p){ h += '<option value="'+p+'"'+(wowState.fkProd===p?' selected':'')+'>'+(p==='all'?'All Products':p)+'</option>'; });
+    h += '</select>&nbsp;&nbsp;<label>Campaign Type</label><select onchange="wowState.fkType=this.value;wowRender()">';
+    ['all','GENERIC','COMPETITION'].forEach(function(t){ h += '<option value="'+t+'"'+(wowState.fkType===t?' selected':'')+'>'+(t==='all'?'All Types':t)+'</option>'; });
+    h += '</select>';
+  } else if (wowState.view === 'azs') {
+    var azp = ['all'].concat(Object.keys(WOW_DATA.az_sessions.product));
+    h += '<label>Product</label><select onchange="wowState.azsProd=this.value;wowRender()">';
+    azp.forEach(function(p){ h += '<option value="'+p+'"'+(wowState.azsProd===p?' selected':'')+'>'+(p==='all'?'All Products':p)+'</option>'; });
+    h += '</select>';
+  } else if (wowState.view === 'aza') {
+    h += '<label>Type</label><select onchange="wowState.azaType=this.value;wowRender()">';
+    ['all','SP','SD','Branded','Generic','Competition'].forEach(function(t){ h += '<option value="'+t+'"'+(wowState.azaType===t?' selected':'')+'>'+(t==='all'?'Total':t)+'</option>'; });
+    h += '</select>';
+  }
+  el.innerHTML = h;
+}
+
+function wowBuildTable(weeks, cols, getRow, prefix) {
+  var g = wowGroupByMonth(prefix, weeks);
+  var h = '<table class="wow-table"><thead><tr><th style="text-align:left;min-width:90px">Week</th>';
+  cols.forEach(function(c){ h += '<th>'+c.label+'</th>'; });
+  h += '</tr></thead><tbody>';
+
+  g.order.forEach(function(mk) {
+    var mwks = g.groups[mk];
+    var exp = wowMonthExpanded(mk, g.order);
+    var eid = mk.replace(/\s/g,'_');
+    h += '<tr class="wow-month-hdr" onclick="wowToggleMonth(\''+eid+'\')">';
+    h += '<td colspan="'+(cols.length+1)+'"><span data-wow-toggle="'+eid+'">'+(exp?'▼':'▶')+'</span> '+mk+'<span style="font-size:10px;color:#6b7280;font-weight:400;margin-left:8px">'+mwks.length+' weeks</span></td>';
+    h += '</tr>';
+
+    mwks.forEach(function(wk, wi) {
+      var prevWk = wi > 0 ? mwks[wi-1] : (g.order.indexOf(mk) > 0 ? g.groups[g.order[g.order.indexOf(mk)-1]].slice(-1)[0] : null);
+      var row = getRow(wk);
+      var prevRow = prevWk ? getRow(prevWk) : null;
+      var label = wk.split(' - ')[0];
+      h += '<tr class="wow-week-row'+(exp?'':' hidden')+'" data-month="'+eid+'">';
+      h += '<td>'+label+'</td>';
+      cols.forEach(function(c) {
+        var v = row ? row[c.key] : null;
+        var pv = prevRow ? prevRow[c.key] : null;
+        h += '<td><span class="wow-val">'+wowFmt(v, c.fmt)+'</span>'+wowDelta(v, pv, c.inv||false)+'</td>';
+      });
+      h += '</tr>';
+    });
+  });
+  h += '</tbody></table>';
+  return h;
+}
+
+function wowRenderFK() {
+  var ads = WOW_DATA.fk.ads;
+  var kwt = WOW_DATA.fk.kwType;
+  var atr = WOW_DATA.fk.adsTotal;
+  var prod = wowState.fkProd;
+  var type = wowState.fkType;
+
+  var weeks = Object.keys(ads).sort(function(a,b){ return wowParseWeekStart(a)-wowParseWeekStart(b); });
+  var useKwType = (type !== 'all');
+  var hasProd = (prod !== 'all') && !useKwType;
+
+  var cols = [
+    {key:'revenue', label:'Revenue', fmt:'inr'},
+    {key:'units', label:'Units', fmt:'int'},
+    {key:'spend', label:'Spend', fmt:'inr', inv:true},
+    {key:'roas', label:'ROAS', fmt:'2f'},
+    {key:'acos', label:'ACOS%', fmt:'pct_raw', inv:true},
+    {key:'tacos', label:'TACoS%', fmt:'pct_raw', inv:true},
+    {key:'org_pct', label:'Org%', fmt:'pct_raw'},
+  ];
+
+  function getRow(wk) {
+    var base = null;
+    if (useKwType) {
+      base = kwt[wk] ? kwt[wk].types[type] : null;
+    } else if (prod === 'all') {
+      base = ads[wk] ? ads[wk].total : null;
+    } else {
+      base = ads[wk] && ads[wk].products ? ads[wk].products[prod] : null;
+    }
+    var at = hasProd && atr[prod] ? atr[prod][wk] : null;
+    if (!base && !at) return null;
+    var r = {};
+    if (base) {
+      r.revenue = base.revenue;
+      r.units = base.units;
+      r.spend = base.spend;
+      r.roas = base.roas;
+      r.acos = base.acos != null ? (base.acos < 5 ? base.acos * 100 : base.acos) : null;
+    }
+    if (at) {
+      r.tacos = (at.spend != null && at.total_rev != null && at.total_rev > 0) ? (at.spend / at.total_rev * 100) : null;
+      r.org_pct = at.org_sales_share != null ? at.org_sales_share * 100 : null;
+    }
+    return r;
+  }
+
+  return wowBuildTable(weeks, cols, getRow, 'fk_');
+}
+
+function wowRenderAZS() {
+  var sessions = WOW_DATA.az_sessions.product;
+  var prod = wowState.azsProd;
+
+  var allWeeks = {};
+  if (prod === 'all') {
+    Object.values(sessions).forEach(function(pw){ Object.keys(pw).forEach(function(w){ allWeeks[w]=1; }); });
+  } else if (sessions[prod]) {
+    Object.keys(sessions[prod]).forEach(function(w){ allWeeks[w]=1; });
+  }
+  var weeks = Object.keys(allWeeks).sort(function(a,b){ return wowParseWeekStart(a)-wowParseWeekStart(b); });
+
+  var cols = [
+    {key:'sc_sessions', label:'SC Sessions', fmt:'int'},
+    {key:'organic_sessions', label:'Organic', fmt:'int'},
+    {key:'organic_share', label:'Org%', fmt:'pct_raw'},
+    {key:'overall_cvr', label:'CVR%', fmt:'pct_raw'},
+    {key:'orders', label:'Orders', fmt:'int'},
+  ];
+
+  function getRow(wk) {
+    if (prod === 'all') {
+      var totSc = 0, totOrg = 0, totOrd = 0, n = 0;
+      Object.values(sessions).forEach(function(pw) {
+        var r = pw[wk]; if (!r) return;
+        totSc += r.sc_sessions || 0;
+        totOrg += r.organic_sessions || 0;
+        totOrd += r.orders || 0;
+        n++;
+      });
+      if (!n) return null;
+      return {
+        sc_sessions: totSc, organic_sessions: totOrg, orders: totOrd,
+        organic_share: totSc > 0 ? totOrg / totSc * 100 : null,
+        overall_cvr: totSc > 0 ? totOrd / totSc * 100 : null,
+      };
+    }
+    var r = sessions[prod] ? sessions[prod][wk] : null;
+    if (!r) return null;
+    var os = r.organic_share != null ? (r.organic_share <= 1 ? r.organic_share * 100 : r.organic_share) : null;
+    var cv = r.overall_cvr != null ? (r.overall_cvr <= 1 ? r.overall_cvr * 100 : r.overall_cvr) : null;
+    return {
+      sc_sessions: r.sc_sessions,
+      organic_sessions: r.organic_sessions,
+      orders: r.orders,
+      organic_share: os,
+      overall_cvr: cv,
+    };
+  }
+
+  return wowBuildTable(weeks, cols, getRow, 'azs_');
+}
+
+function wowRenderAZA() {
+  var tv = WOW_DATA.az_ads.typeView;
+  var pw = WOW_DATA.az_ads.productWise;
+  var type = wowState.azaType;
+  var isSpSd = (type === 'SP' || type === 'SD');
+  var src = isSpSd ? pw : tv;
+
+  var weeks = Object.keys(src).sort(function(a,b){ return wowParseWeekStart(a)-wowParseWeekStart(b); });
+
+  var cols = [
+    {key:'impressions', label:'Impr.', fmt:'int'},
+    {key:'clicks', label:'Clicks', fmt:'int'},
+    {key:'spend', label:'Spend', fmt:'inr', inv:true},
+    {key:'sales', label:'Sales', fmt:'inr'},
+    {key:'orders', label:'Orders', fmt:'int'},
+    {key:'roas', label:'ROAS', fmt:'2f'},
+    {key:'acos', label:'ACOS%', fmt:'pct_raw', inv:true},
+  ];
+
+  function getRow(wk) {
+    var wkd = src[wk]; if (!wkd) return null;
+    var base = type === 'all' ? wkd.total : (wkd.types ? wkd.types[type] : null);
+    if (!base) return null;
+    var r = Object.assign({}, base);
+    if (r.acos != null && r.acos < 5) r.acos = r.acos * 100;
+    return r;
+  }
+
+  return wowBuildTable(weeks, cols, getRow, 'aza_');
+}
+
+function wowRender() {
+  if (!WOW_DATA) {
+    var tw = document.getElementById('wow-table-wrap'); if(tw) tw.innerHTML='';
+    var ef = document.getElementById('wow-empty'); if(ef) ef.style.display='block';
+    wowRenderFilters();
+    return;
+  }
+  var ef = document.getElementById('wow-empty'); if(ef) ef.style.display='none';
+  wowRenderFilters();
+  var html = '';
+  if (wowState.view === 'fk') html = wowRenderFK();
+  else if (wowState.view === 'azs') html = wowRenderAZS();
+  else if (wowState.view === 'aza') html = wowRenderAZA();
+  var tw = document.getElementById('wow-table-wrap'); if(tw) tw.innerHTML = html;
+}
+
+// WoW auto-load
+(function() {
+  fetch('./data/wow_data.json', {cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(data){
+      WOW_DATA = data;
+      var fkWks = Object.keys(data.fk.ads||{}).length;
+      var azWks = Object.keys(data.az_ads.typeView||{}).length;
+      var st = document.getElementById('wow-status');
+      if(st) st.textContent = 'WoW loaded — FK: '+fkWks+' weeks | AZ Ads: '+azWks+' weeks';
+      if(S.activeTab==='wow') wowRender();
+      console.log('[WoW] Loaded wow_data.json — FK '+fkWks+'w AZ '+azWks+'w');
+    })
+    .catch(function(e){ console.warn('[WoW] wow_data.json not found:', e.message); });
 })();
 
 </script>
