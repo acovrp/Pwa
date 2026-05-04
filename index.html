@@ -415,12 +415,6 @@ tbody tr.l3-row.open{display:table-row}
   <!-- TOP KPIs -->
   <div class="kpi-row" id="amz-kpi-row"></div>
 
-  <!-- WoW quick-jumps -->
-  <div style="display:flex;gap:8px;margin:0 0 8px 0;flex-wrap:wrap">
-    <button onclick="document.getElementById('wow-azs-tbl').closest('.section-card').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:5px 12px;font-size:11px;font-weight:600;background:#eef2ff;border:1px solid #c7d2fe;border-radius:5px;cursor:pointer;color:#3730a3">Sessions WoW ↓</button>
-    <button onclick="document.getElementById('wow-aza-tbl').closest('.section-card').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:5px 12px;font-size:11px;font-weight:600;background:#eef2ff;border:1px solid #c7d2fe;border-radius:5px;cursor:pointer;color:#3730a3">Ads WoW ↓</button>
-  </div>
-
   <!-- PRODUCT TREND TABLE -->
   <div class="section-card">
     <div class="section-hd">
@@ -428,7 +422,7 @@ tbody tr.l3-row.open{display:table-row}
         <div class="section-title">Amazon · Product Performance</div>
         <div class="section-desc" id="amz-mode-desc">Monthly totals · consolidated · Mar* = 30 days so far</div>
       </div>
-      <div class="section-controls">
+      <div class="section-controls" style="flex-wrap:wrap;gap:8px">
         <div class="metric-tabs" id="amz-metric-tabs">
           <button class="metric-tab active" onclick="setAmzMetric('units',this)">Units</button>
           <button class="metric-tab" onclick="setAmzMetric('revenue',this)">Revenue</button>
@@ -438,6 +432,23 @@ tbody tr.l3-row.open{display:table-row}
           <button class="metric-tab" onclick="setAmzMetric('tacos',this)">TACoS</button>
           <button class="metric-tab" onclick="setAmzMetric('ctr',this)">CTR</button>
           <button class="metric-tab" onclick="setAmzMetric('cvr',this)">CVR</button>
+          <button class="metric-tab" onclick="setAmzMetric('ses-wow',this)" style="border-left:2px solid var(--border);margin-left:4px">Ses.WoW</button>
+          <button class="metric-tab" onclick="setAmzMetric('ads-wow',this)">Ads.WoW</button>
+        </div>
+        <div id="amz-wow-sesctrl" style="display:none">
+          <select id="wow-azs-prod" onchange="wowState.azsProd=this.value;if(S.amzMetric==='ses-wow'){var el=document.getElementById('amz-product-tbl');if(el&&WOW_DATA)el.innerHTML=wowRenderAZS();}" style="padding:5px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px">
+            <option value="all">All Products</option>
+          </select>
+        </div>
+        <div id="amz-wow-adsctrl" style="display:none">
+          <select id="wow-aza-type" onchange="wowState.azaType=this.value;if(S.amzMetric==='ads-wow'){var el=document.getElementById('amz-product-tbl');if(el&&WOW_DATA)el.innerHTML=wowRenderAZA();}" style="padding:5px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px">
+            <option value="all">Total</option>
+            <option value="SP">SP</option>
+            <option value="SD">SD</option>
+            <option value="Branded">Branded</option>
+            <option value="Generic">Generic</option>
+            <option value="Competition">Competition</option>
+          </select>
         </div>
       </div>
     </div>
@@ -497,46 +508,6 @@ tbody tr.l3-row.open{display:table-row}
     <div class="tbl-wrap" id="kw-main-tbl"></div>
   </div>
 
-  <!-- AZ Sessions WoW -->
-  <div class="section-card">
-    <div class="section-hd">
-      <div>
-        <div class="section-title">Amazon · Sessions Week over Week</div>
-        <div class="section-desc">Business Report — SC sessions, organic share, CVR, orders by week</div>
-      </div>
-      <div class="section-controls">
-        <select id="wow-azs-prod" onchange="wowState.azsProd=this.value;wowRenderSection('azs')" style="padding:5px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px">
-          <option value="all">All Products</option>
-        </select>
-      </div>
-    </div>
-    <div class="tbl-wrap" style="max-height:70vh" id="wow-azs-tbl">
-      <div style="padding:30px;text-align:center;color:var(--text-secondary);font-size:12px">WoW data not loaded</div>
-    </div>
-  </div>
-
-  <!-- AZ Ads WoW -->
-  <div class="section-card">
-    <div class="section-hd">
-      <div>
-        <div class="section-title">Amazon · Ads Week over Week</div>
-        <div class="section-desc">Campaign Manager — SP/SD performance, impressions, spend, ROAS, ACOS by week</div>
-      </div>
-      <div class="section-controls">
-        <select id="wow-aza-type" onchange="wowState.azaType=this.value;wowRenderSection('aza')" style="padding:5px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px">
-          <option value="all">Total</option>
-          <option value="SP">SP</option>
-          <option value="SD">SD</option>
-          <option value="Branded">Branded</option>
-          <option value="Generic">Generic</option>
-          <option value="Competition">Competition</option>
-        </select>
-      </div>
-    </div>
-    <div class="tbl-wrap" style="max-height:70vh" id="wow-aza-tbl">
-      <div style="padding:30px;text-align:center;color:var(--text-secondary);font-size:12px">WoW data not loaded</div>
-    </div>
-  </div>
 </div>
 
 <!-- ══════════════════════════════════════════
@@ -544,52 +515,36 @@ tbody tr.l3-row.open{display:table-row}
 ══════════════════════════════════════════ -->
 <div id="tab-flipkart" class="tab-content">
   <div class="kpi-row" id="flk-kpi-row"></div>
-  <!-- WoW quick-jump -->
-  <div style="display:flex;gap:8px;margin:0 0 8px 0">
-    <button onclick="document.getElementById('wow-fk-tbl').closest('.section-card').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:5px 12px;font-size:11px;font-weight:600;background:#f3f0ff;border:1px solid #d4b8ff;border-radius:5px;cursor:pointer;color:#5b21b6">WoW Analysis ↓</button>
-  </div>
   <div class="section-card">
     <div class="section-hd">
       <div><div class="section-title">Flipkart · Product Performance</div>
         <div class="section-desc" id="flk-mode-desc">Monthly totals · consolidated · Mar* = 30 days so far</div></div>
-      <div class="section-controls">
+      <div class="section-controls" style="flex-wrap:wrap;gap:8px">
         <div class="metric-tabs" id="flk-metric-tabs">
           <button class="metric-tab active" onclick="setFlkMetric('units',this)">Gross Units</button>
           <button class="metric-tab" onclick="setFlkMetric('revenue',this)">GMV</button>
           <button class="metric-tab" onclick="setFlkMetric('adspend',this)">Ad Spend</button>
           <button class="metric-tab" onclick="setFlkMetric('tacos',this)">TACoS</button>
+          <button class="metric-tab" onclick="setFlkMetric('wow',this)" style="border-left:2px solid var(--border);margin-left:4px">WoW ▸</button>
+        </div>
+        <div id="flk-wow-ctrl" style="display:none;gap:6px;align-items:center">
+          <select id="wow-fk-prod" onchange="wowState.fkProd=this.value;if(S.flkMetric==='wow'){var el=document.getElementById('flk-product-tbl');if(el&&WOW_DATA)el.innerHTML=wowRenderFK();}" style="padding:5px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px">
+            <option value="all">All Products</option>
+            <option value="Hybrid Latex Mattress">Hybrid Latex</option>
+            <option value="Original Mattress">Original</option>
+            <option value="Switch Dual Mattress">Switch Dual</option>
+            <option value="Ultima Mattress">Ultima</option>
+            <option value="Pillows">Pillows</option>
+          </select>
+          <select id="wow-fk-type" onchange="wowState.fkType=this.value;if(S.flkMetric==='wow'){var el=document.getElementById('flk-product-tbl');if(el&&WOW_DATA)el.innerHTML=wowRenderFK();}" style="padding:5px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px">
+            <option value="all">All Types</option>
+            <option value="GENERIC">Generic</option>
+            <option value="COMPETITION">Competition</option>
+          </select>
         </div>
       </div>
     </div>
     <div class="tbl-wrap" id="flk-product-tbl"></div>
-  </div>
-
-  <!-- FK WoW -->
-  <div class="section-card">
-    <div class="section-hd">
-      <div>
-        <div class="section-title">Flipkart · Week over Week</div>
-        <div class="section-desc" id="wow-fk-status">WoW data loading…</div>
-      </div>
-      <div class="section-controls">
-        <select id="wow-fk-prod" onchange="wowState.fkProd=this.value;wowRenderSection('fk')" style="padding:5px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px">
-          <option value="all">All Products</option>
-          <option value="Hybrid Latex Mattress">Hybrid Latex</option>
-          <option value="Original Mattress">Original</option>
-          <option value="Switch Dual Mattress">Switch Dual</option>
-          <option value="Ultima Mattress">Ultima</option>
-          <option value="Pillows">Pillows</option>
-        </select>
-        <select id="wow-fk-type" onchange="wowState.fkType=this.value;wowRenderSection('fk')" style="padding:5px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px">
-          <option value="all">All Types</option>
-          <option value="GENERIC">Generic</option>
-          <option value="COMPETITION">Competition</option>
-        </select>
-      </div>
-    </div>
-    <div class="tbl-wrap" style="max-height:70vh" id="wow-fk-tbl">
-      <div style="padding:30px;text-align:center;color:var(--text-secondary);font-size:12px">WoW data not loaded — ensure data/wow_data.json is in repo</div>
-    </div>
   </div>
 </div>
 
@@ -1631,14 +1586,38 @@ function setAmzMetric(v,btn){
   S.amzMetric=v;
   document.querySelectorAll('#amz-metric-tabs .metric-tab').forEach(function(b){b.classList.remove('active')});
   btn.classList.add('active');
-  renderTrendTable('amz-product-tbl','amz',v==='organic'?'organic_pct':v);
+  var sesCtr=document.getElementById('amz-wow-sesctrl');
+  var adsCtr=document.getElementById('amz-wow-adsctrl');
+  if(sesCtr) sesCtr.style.display=(v==='ses-wow')?'':'none';
+  if(adsCtr) adsCtr.style.display=(v==='ads-wow')?'':'none';
+  var md=document.getElementById('amz-mode-desc');
+  if(v==='ses-wow'){
+    if(md) md.textContent='Sessions WoW — SC sessions, organic share, CVR, orders by week';
+    var el=document.getElementById('amz-product-tbl');
+    if(el) el.innerHTML=WOW_DATA?wowRenderAZS():'<div style="padding:30px;text-align:center;color:var(--text-secondary);font-size:12px">WoW data loading…</div>';
+  } else if(v==='ads-wow'){
+    if(md) md.textContent='Ads WoW — SP/SD impressions, spend, ROAS, ACOS by week';
+    var el=document.getElementById('amz-product-tbl');
+    if(el) el.innerHTML=WOW_DATA?wowRenderAZA():'<div style="padding:30px;text-align:center;color:var(--text-secondary);font-size:12px">WoW data loading…</div>';
+  } else {
+    renderTrendTable('amz-product-tbl','amz',v==='organic'?'organic_pct':v);
+  }
 }
 
 function setFlkMetric(v,btn){
   S.flkMetric=v;
   document.querySelectorAll('#flk-metric-tabs .metric-tab').forEach(function(b){b.classList.remove('active')});
   btn.classList.add('active');
-  renderTrendTable('flk-product-tbl','flk',v==='organic'?'organic_pct':v);
+  var fkCtr=document.getElementById('flk-wow-ctrl');
+  if(fkCtr) fkCtr.style.display=(v==='wow')?'flex':'none';
+  var md=document.getElementById('flk-mode-desc');
+  if(v==='wow'){
+    if(md) md.textContent='Flipkart WoW — Revenue, Units, Spend, ROAS, ACOS, TACoS, Org% by week';
+    var el=document.getElementById('flk-product-tbl');
+    if(el) el.innerHTML=WOW_DATA?wowRenderFK():'<div style="padding:30px;text-align:center;color:var(--text-secondary);font-size:12px">WoW data loading…</div>';
+  } else {
+    renderTrendTable('flk-product-tbl','flk',v==='organic'?'organic_pct':v);
+  }
 }
 
 function setFunnel(v,btn){
@@ -3038,21 +3017,6 @@ function wowRenderAZA() {
   return wowBuildTable(weeks, cols, getRow, 'aza_');
 }
 
-function wowRenderSection(section) {
-  if (!WOW_DATA) return;
-  if (section === 'fk' || section === 'all') {
-    var el = document.getElementById('wow-fk-tbl');
-    if (el) el.innerHTML = wowRenderFK();
-  }
-  if (section === 'azs' || section === 'all') {
-    var el = document.getElementById('wow-azs-tbl');
-    if (el) el.innerHTML = wowRenderAZS();
-  }
-  if (section === 'aza' || section === 'all') {
-    var el = document.getElementById('wow-aza-tbl');
-    if (el) el.innerHTML = wowRenderAZA();
-  }
-}
 
 // WoW auto-load
 (function() {
@@ -3060,13 +3024,12 @@ function wowRenderSection(section) {
     .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
     .then(function(data){
       WOW_DATA = data;
-      var fkWks = Object.keys(data.fk.ads||{}).length;
-      var azWks = Object.keys(data.az_ads.typeView||{}).length;
-      var st = document.getElementById('wow-fk-status');
-      if(st) st.textContent = fkWks+' weeks · Mar–Dec 2025';
       wowPopulateAzsProdSelect();
-      wowRenderSection('all');
-      console.log('[WoW] Loaded — FK '+fkWks+'w AZ '+azWks+'w');
+      // Re-render if user already has a WoW tab active
+      if(S.amzMetric==='ses-wow'){var el=document.getElementById('amz-product-tbl');if(el)el.innerHTML=wowRenderAZS();}
+      if(S.amzMetric==='ads-wow'){var el=document.getElementById('amz-product-tbl');if(el)el.innerHTML=wowRenderAZA();}
+      if(S.flkMetric==='wow'){var el=document.getElementById('flk-product-tbl');if(el)el.innerHTML=wowRenderFK();}
+      console.log('[WoW] Loaded — FK '+Object.keys(data.fk.ads||{}).length+'w AZ '+Object.keys(data.az_ads.typeView||{}).length+'w');
     })
     .catch(function(e){ console.warn('[WoW] wow_data.json not found:', e.message); });
 })();
