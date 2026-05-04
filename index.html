@@ -2049,6 +2049,11 @@ function processBusinessReport(rows) {
         if (wi >= wso) return null;
         return (w.c > 0 && w.s > 0) ? w.c / w.s * 100 : null;
       });
+      if (!ch.cvr) ch.cvr = {};
+      ch.cvr[mo] = wks.map(function(w, wi){
+        if (wi >= wso) return null;
+        return (w.s > 0) ? w.u / w.s * 100 : null;
+      });
     }
     // Set recent = most recent month in uploaded data
     var moOrder = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
@@ -2062,6 +2067,7 @@ function processBusinessReport(rows) {
       ch.revenue.recent = ch.revenue[latestMo].slice();
       if (ch.sessions && ch.sessions[latestMo]) ch.sessions.recent = ch.sessions[latestMo].slice();
       if (ch.ctr && ch.ctr[latestMo]) ch.ctr.recent = ch.ctr[latestMo].slice();
+      if (ch.cvr && ch.cvr[latestMo]) ch.cvr.recent = ch.cvr[latestMo].slice();
       // recent_days = last 3 days of daily data
       ch.units.recent_days = last3.map(function(d){ return dailyAgg[pid] && dailyAgg[pid][d] ? dailyAgg[pid][d].u : null; });
       ch.revenue.recent_days = last3.map(function(d){ return dailyAgg[pid] && dailyAgg[pid][d] ? dailyAgg[pid][d].r : null; });
@@ -2127,6 +2133,7 @@ function processSpReport(rows) {
     agg[pid][mo][wk].sp+=sp; agg[pid][mo][wk].sl+=sl;
   }
   var updated=0;
+  var moSpend={}, moSales={};
   for (var pid in agg) {
     var p=PRODUCTS.find(function(x){return x.id===pid;}); if (!p) continue;
     var ch=p.channels.amz;
@@ -2135,12 +2142,33 @@ function processSpReport(rows) {
       ch.adspend[mo]=wks.map(function(w){return w.sp;});
       ch.acos[mo]=wks.map(function(w,i){var sl=wks[i].sl; return sl>0?Math.round(w.sp/sl*1000)/10:0;});
       ch.tacos[mo]=wks.map(function(w,i){var rv=(ch.revenue[mo]||[])[i]||0; return rv>0?Math.round(w.sp/rv*1000)/10:0;});
+      // organic_pct = (total_rev - attributed_sales) / total_rev
+      if (!ch.organic_pct) ch.organic_pct = {};
+      ch.organic_pct[mo]=wks.map(function(w,i){
+        var rv=(ch.revenue[mo]||[])[i]||0;
+        if (rv<=0) return null;
+        return Math.max(0, Math.min(100, (rv - w.sl) / rv * 100));
+      });
+      // Accumulate for AD_SPEND global
+      if (!moSpend[mo]) { moSpend[mo]=0; moSales[mo]=0; }
+      wks.forEach(function(w){ moSpend[mo]+=w.sp; moSales[mo]+=w.sl; });
     }
     var moOrd=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'],ltMo=null;
     for(var mi=moOrd.length-1;mi>=0;mi--){if(agg[pid][moOrd[mi]]){ltMo=moOrd[mi];break;}}
-    if(ltMo){ch.adspend.recent=ch.adspend[ltMo].slice();ch.acos.recent=ch.acos[ltMo].slice();ch.tacos.recent=ch.tacos[ltMo].slice();}
+    if(ltMo){
+      ch.adspend.recent=ch.adspend[ltMo].slice();
+      ch.acos.recent=ch.acos[ltMo].slice();
+      ch.tacos.recent=ch.tacos[ltMo].slice();
+      if(ch.organic_pct[ltMo]) ch.organic_pct.recent=ch.organic_pct[ltMo].slice();
+    }
     updated++;
   }
+  // Update AD_SPEND totals per month
+  Object.keys(moSpend).forEach(function(mo){
+    if (!AD_SPEND[mo]) AD_SPEND[mo]={sp:0,sb:0,sd:0,total:0};
+    AD_SPEND[mo].sp=moSpend[mo];
+    AD_SPEND[mo].total=AD_SPEND[mo].sp+AD_SPEND[mo].sb+AD_SPEND[mo].sd;
+  });
   console.log('SP: '+updated+' products updated'); renderAmzKpi(); renderTables();
 }
 
@@ -2292,55 +2320,6 @@ document.addEventListener('drop', function(e) {
   });
 });
 
-
-
-function processSpReport(rows) {
-  var hs = rows[0].map(function(h) {
-    return h.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_');
-  });
-  function ci() {
-    var als = Array.prototype.slice.call(arguments);
-    for (var i = 0; i < als.length; i++) {
-      var j = hs.indexOf(als[i]); if (j >= 0) return j;
-    }
-    return -1;
-  }
-  var iDate  = ci('date', 'start_date');
-  var iSpend = ci('spend', 'cost');
-  var iSales = ci('14_day_total_sales_', '14_day_total_sales', '7_day_total_sales_', '7_day_total_sales', 'sales');
-
-  if (iSpend < 0) { console.warn('processSpReport: no spend column found in', hs); return; }
-
-  var MO = {'01':'jan','1':'jan','02':'feb','2':'feb','03':'mar','3':'mar',
-            '04':'apr','4':'apr','05':'may','5':'may','06':'jun','6':'jun',
-            '07':'jul','7':'jul','08':'aug','8':'aug','09':'sep','9':'sep',
-            '10':'oct','11':'nov','12':'dec'};
-  var spend = {}, sales = {};
-
-  for (var i = 1; i < rows.length; i++) {
-    var r = rows[i];
-    var sp = parseFloat((r[iSpend] || '0').replace(/[^\d.]/g, '')) || 0;
-    var sl = iSales >= 0 ? (parseFloat((r[iSales] || '0').replace(/[^\d.]/g, '')) || 0) : 0;
-    var mo = 'mar';
-    if (iDate >= 0 && r[iDate]) {
-      var d = r[iDate].trim();
-      var m1 = d.match(/^\d{4}-(\d{2})-\d{2}/);
-      var m2 = d.match(/^(\d{1,2})\/\d{1,2}\/\d{4}/);
-      var mNum = m1 ? m1[1] : (m2 ? m2[1] : null);
-      if (mNum && MO[mNum]) mo = MO[mNum];
-    }
-    spend[mo] = (spend[mo] || 0) + sp;
-    sales[mo] = (sales[mo] || 0) + sl;
-  }
-
-  Object.keys(spend).forEach(function(mo) {
-    if (!AD_SPEND[mo]) AD_SPEND[mo] = {sp: 0, sb: 0, sd: 0, total: 0};
-    AD_SPEND[mo].sp = spend[mo];
-    AD_SPEND[mo].total = AD_SPEND[mo].sp + AD_SPEND[mo].sb + AD_SPEND[mo].sd;
-  });
-
-  renderAmzKpi();
-}
 
 // SEARCH FUNNEL ENGINE
 var SF = {view: 'demand', cat: 'mattress', data: {}, dates: []};
