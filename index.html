@@ -2070,7 +2070,7 @@ renderAll();
 // ── SP-API AUTO-LOAD ─────────────────────────────────────────
 // Tries relative URL first (Cloudflare Pages), then localhost (local agent).
 (function() {
-  var urls = ['./data/br_history.csv?v=' + Date.now(), 'http://localhost:8080/br_data.csv'];
+  var urls = ['./data/br_history.csv', 'http://localhost:8080/br_data.csv'];
   function tryNext(i) {
     if (i >= urls.length) return;
     fetch(urls[i], {cache: 'no-store'})
