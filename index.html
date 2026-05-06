@@ -2571,7 +2571,7 @@ function processUnifiedAdsReport(text, fname) {
   var lines = text.split(/\r?\n/);
   if (lines.length < 2) return;
 
-  var headers = parseCSVLine(lines[0]).map(function(h){ return h.trim().toLowerCase().replace(/^"+|"+$/g,''); });
+  var headers = parseCSVLine(lines[0]).map(function(h){ return h.trim().toLowerCase().replace(/^"+|"+$/g,'').replace(/\s*\(asin\)\s*$/,''); });
   var col = {};
   headers.forEach(function(h, i){ col[h] = i; });
 
