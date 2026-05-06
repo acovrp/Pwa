@@ -2070,7 +2070,7 @@ renderAll();
 // ── SP-API AUTO-LOAD ─────────────────────────────────────────
 // Tries relative URL first (Cloudflare Pages), then localhost (local agent).
 (function() {
-  var urls = ['./data/br_history.csv', 'http://localhost:8080/br_data.csv'];
+  var urls = ['./data/br_history.csv?v=' + Date.now(), 'http://localhost:8080/br_data.csv'];
   function tryNext(i) {
     if (i >= urls.length) return;
     fetch(urls[i], {cache: 'no-store'})
@@ -2187,16 +2187,41 @@ function recomputeWeeklyDerived() {
 function handleUpload(type, inp) {
   var file = inp.files[0]; if (!file) return;
   if (type === 'ads') {
-    var adsFile = inp.files[0];
-    if (!adsFile) return;
-    markSlot('ads', 0, adsFile.name);
+    markSlot('ads', 0, file.name);
     var ust = document.getElementById('ust-ads');
     if (ust) ust.textContent = 'Loading…';
-    var adsReader = new FileReader();
-    adsReader.onload = function(ev) {
-      processUnifiedAdsReport(ev.target.result, adsFile.name);
-    };
-    adsReader.readAsText(adsFile, 'UTF-8');
+    // Stream in 5 MB slices — avoids OOM on large SP reports (250 MB+)
+    var SLICESZ = 5 * 1024 * 1024;
+    var offset = 0, leftover = '', proc = null, fname = file.name;
+    function readNext() {
+      if (offset >= file.size) {
+        if (proc) { if (leftover.trim()) proc.addRows(leftover); proc.finish(); }
+        return;
+      }
+      var blob = file.slice(offset, Math.min(offset + SLICESZ, file.size));
+      var fr = new FileReader();
+      fr.onload = function(ev) {
+        var text = leftover + ev.target.result;
+        var lastNL = text.lastIndexOf('\n');
+        if (lastNL < 0) { leftover = text; offset += SLICESZ; readNext(); return; }
+        leftover = text.slice(lastNL + 1);
+        var chunk = text.slice(0, lastNL);
+        if (!proc) {
+          var nl = chunk.indexOf('\n');
+          var hdr = nl < 0 ? chunk : chunk.slice(0, nl);
+          proc = initAdsStreamProcessor(hdr, fname);
+          if (!proc) return;
+          chunk = nl < 0 ? '' : chunk.slice(nl + 1);
+        }
+        if (chunk) proc.addRows(chunk);
+        offset += SLICESZ;
+        var pct = Math.min(100, Math.round(offset / file.size * 100));
+        if (ust) ust.textContent = 'Processing… ' + pct + '%';
+        setTimeout(readNext, 0);
+      };
+      fr.readAsText(blob, 'UTF-8');
+    }
+    readNext();
     return;
   }
 
@@ -2567,11 +2592,8 @@ function findCol(col, names) {
 }
 
 // ── UNIFIED ADS REPORT PROCESSOR ─────────────────────────────────────────────
-function processUnifiedAdsReport(text, fname) {
-  var lines = text.split(/\r?\n/);
-  if (lines.length < 2) return;
-
-  var headers = parseCSVLine(lines[0]).map(function(h){ return h.trim().toLowerCase().replace(/^"+|"+$/g,'').replace(/\s*\(asin\)\s*$/,''); });
+function initAdsStreamProcessor(headerLine, fname) {
+  var headers = parseCSVLine(headerLine).map(function(h){ return h.trim().toLowerCase().replace(/^"+|"+$/g,'').replace(/\s*\(asin\)\s*$/,''); });
   var col = {};
   headers.forEach(function(h, i){ col[h] = i; });
 
@@ -2581,10 +2603,9 @@ function processUnifiedAdsReport(text, fname) {
     console.warn('[ADS] Missing columns:', missing, 'Available:', headers.slice(0,20));
     var ust = document.getElementById('ust-ads');
     if (ust) ust.textContent = 'Error: wrong CSV format — missing ' + missing.join(', ');
-    return;
+    return null;
   }
 
-  // Build prodId→line lookup once
   var pid2line = {};
   PRODUCTS.forEach(function(p){ pid2line[p.id] = p.line; });
 
@@ -2595,7 +2616,6 @@ function processUnifiedAdsReport(text, fname) {
     if (s.indexOf('BRANDS') >= 0) return 'SB';
     return 'SP';
   }
-
   function detectIntent(name) {
     var n = (name || '').toUpperCase();
     if (n.indexOf('SPPT') === 0 || n.indexOf('SBPT') === 0) return 'Branded';
@@ -2604,138 +2624,73 @@ function processUnifiedAdsReport(text, fname) {
     if (/\bAUTO\b/.test(n) || /^SPA[\s|]/.test(n)) return 'Auto';
     return 'Generic';
   }
-
-  function pn(v) {
-    if (!v) return 0;
-    var n = parseFloat(String(v).replace(/[$,\s]/g,''));
-    return isNaN(n) ? 0 : n;
-  }
-
+  function pn(v) { if (!v) return 0; var n = parseFloat(String(v).replace(/[$,\s]/g,'')); return isNaN(n) ? 0 : n; }
   function isoWeek(d) {
-    var dt = new Date(d);
-    if (isNaN(dt)) return null;
-    dt.setHours(0,0,0,0);
-    dt.setDate(dt.getDate() + 3 - (dt.getDay() + 6) % 7);
+    var dt = new Date(d); if (isNaN(dt)) return null;
+    dt.setHours(0,0,0,0); dt.setDate(dt.getDate() + 3 - (dt.getDay() + 6) % 7);
     var jan4 = new Date(dt.getFullYear(), 0, 4);
     var wk = 1 + Math.round(((dt - jan4) / 86400000 - 3 + (jan4.getDay() + 6) % 7) / 7);
     return dt.getFullYear() + '-W' + (wk < 10 ? '0' : '') + wk;
   }
 
-  // Use Week/Year columns directly if present (much more reliable)
-  var hasWeekCol = col['week'] !== undefined;
-  var hasYearCol = col['year'] !== undefined;
+  var hasWeekCol = col['week'] !== undefined, hasYearCol = col['year'] !== undefined;
+  ADS_STATE.cube = {}; ADS_STATE.termCube = {};
+  var weekSet = {}, processed = 0;
+  var hasTerm = col['search term'] !== undefined, colTerm = hasTerm ? col['search term'] : -1;
+  var colAsin=col['advertised product id'], colDate=col['date'], colAdProd=col['ad product'];
+  var colCamp=col['campaign name'], colCost=col['total cost'], colSales=col['sales'];
+  var colImpr=col['impressions'], colClicks=col['clicks'], colPurch=col['purchases'], colUnits=col['units sold'];
 
-  // Reset state
-  ADS_STATE.cube = {};
-  ADS_STATE.termCube = {};
-  var weekSet = {};
-
-  var total = lines.length;
-  var CHUNK = 8000;
-  var idx = 1;
-  var processed = 0;
-
-  var hasTerm = col['search term'] !== undefined;
-  var colTerm = hasTerm ? col['search term'] : -1;
-  var colAsin = col['advertised product id'];
-  var colDate = col['date'];
-  var colAdProd = col['ad product'];
-  var colCamp = col['campaign name'];
-  var colCost = col['total cost'];
-  var colSales = col['sales'];
-  var colImpr = col['impressions'];
-  var colClicks = col['clicks'];
-  var colPurch = col['purchases'];
-  var colUnits = col['units sold'];
-
-  function processChunk() {
-    var end = Math.min(idx + CHUNK, total);
-    for (var i = idx; i < end; i++) {
-      var line = lines[i];
-      if (!line || !line.trim()) continue;
-
-      var row = parseCSVLine(line);
-      if (row.length < 5) continue;
-
-      var asin = (row[colAsin] || '').trim().replace(/^"+|"+$/g,'');
-      var prodId = ASIN_MAP[asin];
-      if (!prodId) continue;
-      var ln = pid2line[prodId];
-      if (!ln) continue;
-
-      var week;
-      if (hasWeekCol && hasYearCol) {
-        var yr = String((row[col['year']] || '').trim()).replace(/^"+|"+$/g,'');
-        var wk = String((row[col['week']] || '0').trim()).padStart(2, '0');
-        week = yr + '-W' + wk;
-      } else {
-        var date = (row[colDate] || '').trim().replace(/^"+|"+$/g,'');
-        week = isoWeek(date);
-      }
-      if (!week) continue;
-
-      var adType = normAd(row[colAdProd]);
-      var campName = (row[colCamp] || '').trim().replace(/^"+|"+$/g,'');
-      var intent = detectIntent(campName);
-
-      var spend = pn(row[colCost]);
-      var sales = pn(row[colSales]);
-      var impr = pn(row[colImpr]);
-      var clicks = pn(row[colClicks]);
-      var orders = pn(row[colPurch]);
-      var units = pn(row[colUnits]);
-
-      var key = ln + '||' + adType + '||' + intent + '||' + week;
-      if (!ADS_STATE.cube[key]) {
-        ADS_STATE.cube[key] = {sp:0, sl:0, im:0, ck:0, or:0, un:0};
-      }
-      var c = ADS_STATE.cube[key];
-      c.sp += spend; c.sl += sales; c.im += impr; c.ck += clicks; c.or += orders; c.un += units;
-
-      weekSet[week] = 1;
-
-      // Term cube (SP only, exclude auto-targets)
-      if (adType === 'SP' && hasTerm) {
-        var term = (row[colTerm] || '').trim().replace(/^"+|"+$/g,'').toLowerCase();
-        if (term && term !== '--' && term.indexOf('b0') !== 0 && term.indexOf('b09') !== 0) {
-          var tkey = term + '||' + ln;
-          if (!ADS_STATE.termCube[tkey]) {
-            ADS_STATE.termCube[tkey] = {sp:0, ck:0, or:0, sl:0, term:term, line:ln};
-          }
-          var tc = ADS_STATE.termCube[tkey];
-          tc.sp += spend; tc.ck += clicks; tc.or += orders; tc.sl += sales;
+  return {
+    addRows: function(chunk) {
+      var lines = chunk.split('\n');
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i]; if (!line || !line.trim()) continue;
+        var row = parseCSVLine(line); if (row.length < 5) continue;
+        var asin = (row[colAsin]||'').trim().replace(/^"+|"+$/g,'');
+        var prodId = ASIN_MAP[asin]; if (!prodId) continue;
+        var ln = pid2line[prodId]; if (!ln) continue;
+        var week;
+        if (hasWeekCol && hasYearCol) {
+          var yr = String((row[col['year']]||'').trim()).replace(/^"+|"+$/g,'');
+          var wk = String((row[col['week']]||'0').trim()).padStart(2,'0');
+          week = yr + '-W' + wk;
+        } else {
+          week = isoWeek((row[colDate]||'').trim().replace(/^"+|"+$/g,''));
         }
+        if (!week) continue;
+        var adType = normAd(row[colAdProd]);
+        var intent = detectIntent((row[colCamp]||'').trim().replace(/^"+|"+$/g,''));
+        var spend=pn(row[colCost]), sales=pn(row[colSales]), impr=pn(row[colImpr]);
+        var clicks=pn(row[colClicks]), orders=pn(row[colPurch]), units=pn(row[colUnits]);
+        var key = ln+'||'+adType+'||'+intent+'||'+week;
+        if (!ADS_STATE.cube[key]) ADS_STATE.cube[key]={sp:0,sl:0,im:0,ck:0,or:0,un:0};
+        var c=ADS_STATE.cube[key]; c.sp+=spend;c.sl+=sales;c.im+=impr;c.ck+=clicks;c.or+=orders;c.un+=units;
+        weekSet[week]=1;
+        if (adType==='SP' && hasTerm) {
+          var term=(row[colTerm]||'').trim().replace(/^"+|"+$/g,'').toLowerCase();
+          if (term && term!=='--' && term.indexOf('b0')!==0 && term.indexOf('b09')!==0) {
+            var tkey=term+'||'+ln;
+            if (!ADS_STATE.termCube[tkey]) ADS_STATE.termCube[tkey]={sp:0,ck:0,or:0,sl:0,term:term,line:ln};
+            var tc=ADS_STATE.termCube[tkey]; tc.sp+=spend;tc.ck+=clicks;tc.or+=orders;tc.sl+=sales;
+          }
+        }
+        setWeeklyCube(ln, week, {adSpend:spend,adSales:sales,impressions:impr,adClicks:clicks,orders:orders,adUnits:units});
+        processed++;
       }
-
-      // ── WEEKLY CUBE (formulated layer) ──
-      if (ln && week) {
-        setWeeklyCube(ln, week, {adSpend: spend, adSales: sales, impressions: impr, adClicks: clicks, orders: orders, adUnits: units});
-      }
-
-      processed++;
-    }
-    idx = end;
-
-    var pct = Math.round(idx / total * 100);
-    var ust = document.getElementById('ust-ads');
-
-    if (idx < total) {
-      if (ust) ust.textContent = 'Processing… ' + pct + '%';
-      setTimeout(processChunk, 0);
-    } else {
+    },
+    finish: function() {
       ADS_STATE.weeks = Object.keys(weekSet).sort();
       ADS_STATE.ready = true;
-      var uslot = document.getElementById('uslot-ads');
-      if (uslot) uslot.classList.add('ok');
-      if (ust) ust.textContent = (fname || 'Unified Ads') + ' · ' + processed.toLocaleString() + ' rows · ' + ADS_STATE.weeks.length + ' wks';
-      console.log('[ADS] Done. Rows:', processed, 'Weeks:', ADS_STATE.weeks.length, 'Cube keys:', Object.keys(ADS_STATE.cube).length);
+      var uslot = document.getElementById('uslot-ads'); if (uslot) uslot.classList.add('ok');
+      var ust = document.getElementById('ust-ads');
+      if (ust) ust.textContent = (fname||'Unified Ads') + ' · ' + processed.toLocaleString() + ' rows · ' + ADS_STATE.weeks.length + ' wks';
+      console.log('[ADS] Done. Rows:',processed,'Weeks:',ADS_STATE.weeks.length,'Cube keys:',Object.keys(ADS_STATE.cube).length);
       recomputeWeeklyDerived();
       renderAdsPanel();
       renderUnifiedWeeklyTable();
     }
-  }
-
-  processChunk();
+  };
 }
 
 function processSpReport(rows) {
