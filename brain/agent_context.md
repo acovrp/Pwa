@@ -200,6 +200,13 @@ Never refuse silently. Never execute a risky action and mention the risk after. 
 - `filter_term`: search within term text (e.g. "foam", "latex")
 - Example: "which mattress keywords dropped?" → `query_keywords(drops, filter_product=mattr)`
 
+**`generate_report`** — Generate an HTML visual dashboard, publish to GitHub Pages, return a URL.
+- `report_type`: `wow_sales` (WoW revenue/units/sessions trend) | `asin_breakdown`
+- `date_from`, `date_to`: optional, defaults to last 16 weeks
+- Reads `br_history.csv`, builds Chart.js HTML (dark theme, mobile-friendly), writes to `pwa-push/reports/`, git-pushes, returns GitHub Pages URL
+- Example: "show me last 4 months as a graph" → `generate_report(wow_sales, 2026-01-01, 2026-05-07)` → `✅ https://acovrp.github.io/Pwa/reports/wow_2026-05-07.html`
+- **NEVER paste HTML code as text in Telegram.** Always call this tool and return the URL.
+
 ### Telegram Bot Commands
 | Command | Access | What it does |
 |---|---|---|

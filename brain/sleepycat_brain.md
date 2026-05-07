@@ -105,7 +105,7 @@ Aman's single-file HTML command center, built personally and maintained by the a
 | Brand Analytics — Search Catalog Performance (manual CSV) | Search funnel — impression/click/ATC/purchase share → Search Funnel tab (Category Demand, SC Funnel Share, etc.) |
 | Brand Analytics — Search Terms Report (SP-API auto) | SC organic search presence — 147 search terms, position #1/2/3, click share, conv share, month-over-month → SC Organic Search Presence view |
 | Flipkart Sales export | Units, GMV, returns |
-| Snowflake | Ad spend (SP ASIN coverage ~62% due to keyword-level vs product-ad-level row mixing) |
+| Snowflake (`V_ADS_ENRICHED` view) | Amazon Ads — all campaign types. SP spend 100% ASIN-matched (enriched via ADID→SP_ADS JOIN). SD spend +40% inflated vs Amazon CSV (upstream Airbyte pipeline bug — not yet fixed). Account 2 (~25-30% of campaigns) missing from Snowflake entirely. Brand Analytics data also in Snowflake: `ASP_GET_BRAND_ANALYTICS_SEARCH_TERMS_REPORT` (4.45M rows) — may remove need for manual BA downloads. Scripts: `C:\Users\User\Downloads\az-ads-dashboard-snowflake\`. |
 
 ### SP Report Column Format (current export as of Apr 2026)
 Amazon SC SP report columns (after normalization): `date` (format: "Apr 23, 2026"), `week`, `month`, `year`, `ad product`, `campaign name`, `advertised product id` (= ASIN), `total cost` (= spend), `sales` (= 14-day attributed revenue). processSpReport handles this format. If columns change in a future export, update `ci()` lookup strings in processSpReport.
@@ -175,7 +175,7 @@ Aman is building the Marketplace OS into a product — an AI-led marketplace man
 - Case sensitivity check on all data joins (learned from Latex Ortho Mattress bug)
 - Validate file formats and column headers before writing parsers
 - Conservative numbers always — Aman catches inflated projections immediately
-- Snowflake SP ASIN coverage gap is a known, accepted limitation (~62%)
+- Snowflake SP ASIN coverage is now 100% via `V_ADS_ENRICHED` view (ADID JOIN to SP_ADS table). SD spend +40% inflated vs Amazon CSV (Airbyte upstream). Account 2 (~25-30% of campaigns) not in Snowflake.
 
 ---
 
@@ -271,7 +271,7 @@ Aman is building the Marketplace OS into a product — an AI-led marketplace man
 | EasyEcomm | Orders, inventory aggregation | Live data source |
 | Google Sheets | Search funnel data layer | 26 months BA data |
 | Brand Analytics | Search catalog performance | Monthly/weekly exports |
-| Snowflake | Ad spend data | ~62% coverage (known gap) |
+| Snowflake | Amazon Ads data via `SLEEPYCAT_DB.MAPLEMONK.V_ADS_ENRICHED`. SP 100% ASIN-matched. SD +40% inflated (Airbyte bug). Account 2 missing. BA data: `ASP_GET_BRAND_ANALYTICS_SEARCH_TERMS_REPORT`. |
 | Marketplace OS | Consolidated dashboard | v7.3, hosted at https://acovrp.github.io/Pwa/ |
 
 ### SP-API (Mark1) — Now Live (May 2026)
