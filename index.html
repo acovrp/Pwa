@@ -2200,24 +2200,31 @@ function handleUpload(type, inp) {
       }
       var blob = file.slice(offset, Math.min(offset + SLICESZ, file.size));
       var fr = new FileReader();
+      fr.onerror = function() {
+        if (ust) ust.textContent = 'Error: file read failed at offset ' + offset;
+      };
       fr.onload = function(ev) {
-        var text = leftover + ev.target.result;
-        var lastNL = text.lastIndexOf('\n');
-        if (lastNL < 0) { leftover = text; offset += SLICESZ; readNext(); return; }
-        leftover = text.slice(lastNL + 1);
-        var chunk = text.slice(0, lastNL);
-        if (!proc) {
-          var nl = chunk.indexOf('\n');
-          var hdr = nl < 0 ? chunk : chunk.slice(0, nl);
-          proc = initAdsStreamProcessor(hdr, fname);
-          if (!proc) return;
-          chunk = nl < 0 ? '' : chunk.slice(nl + 1);
+        try {
+          var text = leftover + ev.target.result;
+          var lastNL = text.lastIndexOf('\n');
+          if (lastNL < 0) { leftover = text; offset += SLICESZ; readNext(); return; }
+          leftover = text.slice(lastNL + 1);
+          var chunk = text.slice(0, lastNL);
+          if (!proc) {
+            var nl = chunk.indexOf('\n');
+            var hdr = nl < 0 ? chunk : chunk.slice(0, nl);
+            proc = initAdsStreamProcessor(hdr, fname);
+            if (!proc) return;
+            chunk = nl < 0 ? '' : chunk.slice(nl + 1);
+          }
+          if (chunk) proc.addRows(chunk);
+          offset += SLICESZ;
+          var pct = Math.min(100, Math.round(offset / file.size * 100));
+          if (ust) ust.textContent = 'Processing… ' + pct + '%';
+          setTimeout(readNext, 0);
+        } catch(e) {
+          if (ust) ust.textContent = 'Error at ' + Math.round(offset/1024/1024) + 'MB: ' + e.message;
         }
-        if (chunk) proc.addRows(chunk);
-        offset += SLICESZ;
-        var pct = Math.min(100, Math.round(offset / file.size * 100));
-        if (ust) ust.textContent = 'Processing… ' + pct + '%';
-        setTimeout(readNext, 0);
       };
       fr.readAsText(blob, 'UTF-8');
     }
