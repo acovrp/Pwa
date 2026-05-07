@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -2593,6 +2593,7 @@ function findCol(col, names) {
 
 // ── UNIFIED ADS REPORT PROCESSOR ─────────────────────────────────────────────
 function initAdsStreamProcessor(headerLine, fname) {
+  headerLine = headerLine.charCodeAt(0) === 0xFEFF ? headerLine.slice(1) : headerLine; // strip UTF-8 BOM
   var headers = parseCSVLine(headerLine).map(function(h){ return h.trim().toLowerCase().replace(/^"+|"+$/g,'').replace(/\s*\(asin\)\s*$/,''); });
   var col = {};
   headers.forEach(function(h, i){ col[h] = i; });
