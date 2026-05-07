@@ -468,6 +468,7 @@ tbody tr.l3-row.open{display:table-row}
           <button class="metric-tab" onclick="setAmzMetric('tacos',this)">TACoS</button>
           <button class="metric-tab" onclick="setAmzMetric('ctr',this)">CTR</button>
           <button class="metric-tab" onclick="setAmzMetric('cvr',this)">CVR</button>
+          <button class="metric-tab" onclick="setAmzMetric('adcvr',this)">Ad CVR</button>
         </div>
       </div>
     </div>
@@ -747,7 +748,7 @@ var FLAGS = [];
 // For volume metrics (units, revenue, spend) sum/avg differ
 
 function isRateMetric(metric) {
-  return ['organic_pct','acos','tacos','ctr','cvr'].indexOf(metric) > -1;
+  return ['organic_pct','acos','tacos','ctr','cvr','adcvr'].indexOf(metric) > -1;
 }
 
 function getCols() {
@@ -936,7 +937,7 @@ function fmtV(v, metric) {
     return '₹'+Math.round(v);
   }
   if (metric === 'units') return Math.round(v).toLocaleString('en-IN');
-  if (isRateMetric(metric)) return v.toFixed(metric==='ctr'||metric==='cvr'?2:1)+'%';
+  if (isRateMetric(metric)) return v.toFixed(metric==='ctr'||metric==='cvr'||metric==='adcvr'?2:1)+'%';
   return v.toFixed(1);
 }
 
@@ -2665,6 +2666,8 @@ function initAdsStreamProcessor(headerLine, fname) {
   var colAsin=col['advertised product id'], colDate=col['date'], colAdProd=col['ad product'];
   var colCamp=col['campaign name'], colCost=col['total cost'], colSales=col['sales'];
   var colImpr=col['impressions'], colClicks=col['clicks'], colPurch=col['purchases'], colUnits=col['units sold'];
+  var MON_KEYS_ADS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  var monthAgg = {}; // monthAgg[prodId][mo][wk] = {sp,sl,im,ck,un}
 
   return {
     addRows: function(chunk) {
@@ -2701,6 +2704,18 @@ function initAdsStreamProcessor(headerLine, fname) {
           }
         }
         setWeeklyCube(ln, week, {adSpend:spend,adSales:sales,impressions:impr,adClicks:clicks,orders:orders,adUnits:units});
+        // Month-level aggregation for PRODUCTS.channels.amz metrics
+        var dateStr = (row[colDate]||'').trim().replace(/^"+|"+$/g,'');
+        var moKey = null, dayWk = 0;
+        var m3 = dateStr.match(/([A-Za-z]{3})\s+(\d{1,2}),?\s*(\d{4})/);
+        if (m3) { moKey = m3[1].toLowerCase(); dayWk = Math.min(3, Math.floor((parseInt(m3[2])-1)/7)); }
+        else { var m4 = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/); if (m4) { moKey = MON_KEYS_ADS[parseInt(m4[2])-1]; dayWk = Math.min(3, Math.floor((parseInt(m4[3])-1)/7)); } }
+        if (moKey && prodId) {
+          if (!monthAgg[prodId]) monthAgg[prodId] = {};
+          if (!monthAgg[prodId][moKey]) monthAgg[prodId][moKey] = [{sp:0,sl:0,im:0,ck:0,un:0},{sp:0,sl:0,im:0,ck:0,un:0},{sp:0,sl:0,im:0,ck:0,un:0},{sp:0,sl:0,im:0,ck:0,un:0}];
+          var slot = monthAgg[prodId][moKey][dayWk];
+          slot.sp+=spend; slot.sl+=sales; slot.im+=impr; slot.ck+=clicks; slot.un+=units;
+        }
         processed++;
       }
     },
@@ -2711,9 +2726,47 @@ function initAdsStreamProcessor(headerLine, fname) {
       var ust = document.getElementById('ust-ads');
       if (ust) ust.textContent = (fname||'Unified Ads') + ' · ' + processed.toLocaleString() + ' rows · ' + ADS_STATE.weeks.length + ' wks';
       console.log('[ADS] Done. Rows:',processed,'Weeks:',ADS_STATE.weeks.length,'Cube keys:',Object.keys(ADS_STATE.cube).length);
+      // Write monthly aggregates to PRODUCTS.channels.amz
+      var MON_ORD = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+      var moSpendTot = {};
+      Object.keys(monthAgg).forEach(function(pid) {
+        var p = PRODUCTS.find(function(x){return x.id===pid;}); if (!p) return;
+        var ch = p.channels.amz;
+        var ltMo = null;
+        Object.keys(monthAgg[pid]).forEach(function(mo) {
+          var wks = monthAgg[pid][mo];
+          ch.adspend[mo] = wks.map(function(w){return w.sp;});
+          ch.acos[mo] = wks.map(function(w){return w.sl>0?Math.round(w.sp/w.sl*1000)/10:0;});
+          ch.tacos[mo] = wks.map(function(w,i){var rv=(ch.revenue[mo]||[])[i]||0; return rv>0?Math.round(w.sp/rv*1000)/10:0;});
+          if (!ch.organic_pct) ch.organic_pct = {};
+          ch.organic_pct[mo] = wks.map(function(w,i){var rv=(ch.revenue[mo]||[])[i]||0; if(rv<=0) return null; return Math.max(0,Math.min(100,(rv-w.sl)/rv*100));});
+          if (!ch.ctr) ch.ctr = {};
+          ch.ctr[mo] = wks.map(function(w){return w.im>0?Math.round(w.ck/w.im*10000)/100:null;});
+          if (!ch.adcvr) ch.adcvr = {};
+          ch.adcvr[mo] = wks.map(function(w){return w.im>0?Math.round(w.un/w.im*10000)/100:null;});
+          if (!moSpendTot[mo]) moSpendTot[mo]=0;
+          wks.forEach(function(w){ moSpendTot[mo]+=w.sp; });
+          if (!ltMo || MON_ORD.indexOf(mo)>MON_ORD.indexOf(ltMo)) ltMo=mo;
+        });
+        if (ltMo) {
+          ch.adspend.recent=ch.adspend[ltMo].slice();
+          ch.acos.recent=ch.acos[ltMo].slice();
+          ch.tacos.recent=ch.tacos[ltMo].slice();
+          if(ch.organic_pct[ltMo]) ch.organic_pct.recent=ch.organic_pct[ltMo].slice();
+          if(ch.ctr[ltMo]) ch.ctr.recent=ch.ctr[ltMo].slice();
+          if(ch.adcvr && ch.adcvr[ltMo]) ch.adcvr.recent=ch.adcvr[ltMo].slice();
+        }
+      });
+      Object.keys(moSpendTot).forEach(function(mo){
+        if(!AD_SPEND[mo]) AD_SPEND[mo]={sp:0,sb:0,sd:0,total:0};
+        AD_SPEND[mo].sp=moSpendTot[mo];
+        AD_SPEND[mo].total=AD_SPEND[mo].sp+AD_SPEND[mo].sb+AD_SPEND[mo].sd;
+      });
       recomputeWeeklyDerived();
       renderAdsPanel();
       renderUnifiedWeeklyTable();
+      renderAmzKpi();
+      renderTables();
     }
   };
 }
