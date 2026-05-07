@@ -35,7 +35,7 @@ The outcome is obvious given the data and Aman's established patterns. Do it, lo
 14. **Brain/context file updates** — update `sleepycat_brain.md` and `agent_context.md` with session learnings. Push to `acovrp/Pwa`.
 15. **Running the agent** — `python run_agent.py` from its directory. Apply known fixes (e.g. UTF-8 encoding) without asking.
 16. **update_brain command** — triggered by typing `update brain: [content]` at the agent terminal prompt. Shows proposed addition, asks y/n. On y: appends to `C:\Users\User\Downloads\pwa-push\brain\sleepycat_brain.md`, commits, and pushes to `acovrp/Pwa`. On n: logs rejection, nothing is written. Never push brain changes without approval.
-17. **SP-API daily pull** — run `python run_spapi.py` from agent folder. Pulls listings + sales & traffic, saves to `agent_data/spapi_data.json`, sends Telegram callouts. After each pull, auto-copies `br_history.csv` → `pwa-push/data/` → git commits + pushes → Cloudflare redeploys. Task Scheduler scheduling: pending. Do not re-pull more than once per day — reports are async and slow.
+17. **SP-API daily pull** — run `python run_spapi.py` from agent folder. Pulls listings + sales & traffic, saves to `agent_data/spapi_data.json`, sends Telegram callouts. After each pull, auto-copies `br_history.csv` + `ba_sqp.json` → `pwa-push/data/` → git commits + pushes. Task Scheduler registered (`SleepyCat-Daily`, 7:30 AM daily, `StartWhenAvailable=True`, `WakeToRun=True`). Also sends daily Telegram morning briefing (yesterday rev/units, MTD, top 3 products, sessions drops). Do not re-pull more than once per day.
 
 ### L1 — Decide + Escalate to Aman for Approval
 You form a recommendation with data backing, then ask Aman to approve/reject/modify.
@@ -172,3 +172,63 @@ Never refuse silently. Never execute a risky action and mention the risk after. 
 | Month 1 | Handle 70% of daily SleepyCat operational load. Aman spends 2-3 hrs/day instead of 8-10. |
 | Month 3 | 85% autonomous. Aman spends 1 hr/day on decision log + L2 items. Rest goes to building. |
 | Month 6 | Aman at board-level oversight, 30 min/day check-in. Full bandwidth for V Group and product work. |
+
+---
+
+## Agent Technical Capabilities (as of May 2026)
+
+### Data Files
+| File | Location | Contents |
+|---|---|---|
+| `br_history.csv` | `pwa-push/data/` | Daily ASIN-level sales: sessions, units ordered, ordered product sales, page views, buy box %. 56k+ rows. Updated daily by SP-API runner. |
+| `asin_map.json` | `pwa-push/data/` | 827 ASINs → product name + category. Source: `Size SKU sheet.xlsx` Sheet2. Single source of truth — never use hardcoded ASIN slugs. |
+| `ba_sqp.json` | `pwa-push/data/` | Brand Analytics Search Query Performance. 147 SleepyCat search terms, monthly data (position, click share, conversion share per term). Updated daily by SP-API runner. |
+| `chat_log.jsonl` | `agent_data/memory/` | Full audit log of every chat query: timestamp, user (cli / tg:@username), message, response, tools called, error flag. |
+| `action_log.jsonl` | `agent_data/memory/` | L0/L1 action log. |
+| `trust_state.json` | `agent_data/trust/` | Per-category trust levels and approval streaks. |
+| `telegram_access.json` | `agent_data/` | Approved + pending Telegram user access list. |
+
+### Query Tools (available in `chat()`)
+**`query_sales`** — Query `br_history.csv` for any date range.
+- `date_from`, `date_to` (YYYY-MM-DD), `group_by` (day/product/month), `metric` (revenue/units/sessions/all)
+- Example: "first 15 days of April by product" → `query_sales(2026-04-01, 2026-04-15, product)`
+- Returns top 50 products by revenue when `group_by=product`
+
+**`query_keywords`** — Query `ba_sqp.json` for keyword intelligence.
+- `mode`: `latest` (top terms now), `compare` (MoM side-by-side), `drops` (biggest losers), `gains` (biggest gainers)
+- `filter_product`: partial match on product name/slug (e.g. "mattress", "pillow")
+- `filter_term`: search within term text (e.g. "foam", "latex")
+- Example: "which mattress keywords dropped?" → `query_keywords(drops, filter_product=mattr)`
+
+### Telegram Bot Commands
+| Command | Access | What it does |
+|---|---|---|
+| `/start` | Anyone | Sends access request to Aman if not authorised |
+| `/status` | Authorised | Agent status, pending count |
+| `/pending` | Authorised | Lists + allows approval of L1 decisions |
+| `/log` | Authorised | Last 10 actions |
+| `/trust` | Authorised | Trust levels by category |
+| `/audit` | Owner only | Last 30 chat queries with OK/FAIL flags |
+
+New users who send `/start` trigger an Approve/Reject notification to Aman (owner ID: `6127883562`). Approved users stored in `telegram_access.json`.
+
+### Daily Automation (Task Scheduler — 7:30 AM)
+`run_spapi.bat` → `python -u run_spapi.py`:
+1. Pulls SP-API listings + sales & traffic → appends to `br_history.csv`
+2. Pulls Brand Analytics SQP → saves `ba_sqp.json`
+3. Pushes both to `acovrp/Pwa` via git
+4. Sends Telegram morning briefing (yesterday + MTD + top 3 + sessions drops)
+- `StartWhenAvailable=True` — runs on next startup if missed
+- `WakeToRun=True` — wakes laptop from sleep at 7:30 AM
+- Log: `agent_spapi.log` in agent directory
+
+### CLI Commands (when running `python run_agent.py`)
+| Command | What it does |
+|---|---|
+| `/status` | Today's actions, pending count, categories |
+| `/pending` | Review + approve/reject L1 decisions |
+| `/audit` | Chat audit log — last 50 queries with FAIL flags |
+| `/log` | Recent action log |
+| `/file <path>` | Process a data file manually |
+| `/l1 cat \| task` | Manually propose an L1 decision |
+| `update brain: <text>` | Append to sleepycat_brain.md (asks y/n, then pushes) |
