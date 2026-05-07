@@ -259,6 +259,7 @@ tbody tr.l3-row.open{display:table-row}
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <div class="live-badge"><div class="live-dot"></div>LIVE</div>
     <div style="font-size:11px;opacity:.7" id="hdr-date"></div>
+    <button onclick="exportSnapshot()" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text-secondary);font-size:11px;cursor:pointer" title="Download snapshot.json and commit to data/ folder">Export Snapshot</button>
   </div>
 </div>
 
@@ -2088,6 +2089,18 @@ var ADS_STATE = { ready: false, cube: {}, termCube: {}, weeks: [] };
 var WEEKLY_CUBE = {};
 var WEEKLY_WEEKS = [];
 
+// ── SNAPSHOT EXPORT ──────────────────────────────────────────
+function exportSnapshot() {
+  var snap = { v: 1, generated: new Date().toISOString(), channels: {}, adSpend: AD_SPEND, weeklyCube: WEEKLY_CUBE, weeklyWeeks: WEEKLY_WEEKS };
+  PRODUCTS.forEach(function(p) {
+    snap.channels[p.id] = { amz: p.channels.amz, flk: p.channels.flk };
+    if (p.channels.qcom) snap.channels[p.id].qcom = p.channels.qcom;
+  });
+  var blob = new Blob([JSON.stringify(snap)], {type: 'application/json'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'snapshot.json'; a.click();
+  console.log('[SNAPSHOT] Exported. Products:', PRODUCTS.length, 'Weekly weeks:', WEEKLY_WEEKS.length);
+}
+
 // ── INIT ──
 document.getElementById('hdr-date').textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
 renderFlags();
@@ -2118,6 +2131,39 @@ renderAll();
       .catch(function() { tryNext(i + 1); });
   }
   tryNext(0);
+})();
+
+// ── SNAPSHOT AUTO-LOAD ───────────────────────────────────────
+(function() {
+  fetch('./data/snapshot.json', {cache: 'no-store'})
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(snap) {
+      // Hydrate PRODUCTS channel data
+      Object.keys(snap.channels || {}).forEach(function(pid) {
+        var p = PRODUCTS.find(function(x){return x.id===pid;}); if (!p) return;
+        var sc = snap.channels[pid];
+        if (sc.amz) Object.assign(p.channels.amz, sc.amz);
+        if (sc.flk) Object.assign(p.channels.flk, sc.flk);
+        if (sc.qcom && p.channels.qcom) Object.assign(p.channels.qcom, sc.qcom);
+      });
+      // Hydrate WEEKLY_CUBE + WEEKLY_WEEKS
+      if (snap.weeklyCube && Object.keys(snap.weeklyCube).length) {
+        WEEKLY_CUBE = snap.weeklyCube;
+        WEEKLY_WEEKS = snap.weeklyWeeks && snap.weeklyWeeks.length ? snap.weeklyWeeks : Object.keys(WEEKLY_CUBE).reduce(function(acc,k){var w=k.split('||')[1];if(w&&acc.indexOf(w)<0)acc.push(w);return acc;},[]).sort();
+      }
+      // Hydrate AD_SPEND
+      if (snap.adSpend) Object.assign(AD_SPEND, snap.adSpend);
+      // Mark slots as pre-loaded
+      var gen = (snap.generated||'').slice(0,10);
+      ['br','ads'].forEach(function(t){
+        var sl=document.getElementById('uslot-'+t); if(sl) sl.classList.add('ok');
+        var st=document.getElementById('ust-'+t); if(st&&t==='br') st.textContent='✓ Snapshot · '+gen;
+        if(st&&t==='ads') st.textContent='✓ Snapshot · '+gen;
+      });
+      console.log('[SNAPSHOT] Loaded. Generated:', snap.generated, 'Products:', Object.keys(snap.channels||{}).length, 'Weeks:', WEEKLY_WEEKS.length);
+      renderAmzKpi(); renderFlkKpi(); renderAll();
+    })
+    .catch(function() { /* no snapshot.json yet */ });
 })();
 
 // ── BA SQP AUTO-LOAD ──────────────────────────────────────────
