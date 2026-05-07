@@ -2057,6 +2057,12 @@ function renderAll(){
   renderQcom();
 }
 
+// ── GLOBALS (must be declared before INIT so render functions can access them) ──
+var UPLOADED = {};
+var ADS_STATE = { ready: false, cube: {}, termCube: {}, weeks: [] };
+var WEEKLY_CUBE = {};
+var WEEKLY_WEEKS = [];
+
 // ── INIT ──
 document.getElementById('hdr-date').textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
 renderFlags();
@@ -2125,20 +2131,7 @@ var BA_SQP = null;
 })();
 
 // ── UPLOAD HANDLER ──────────────────────────────────────────
-var UPLOADED = {};
-var ADS_STATE = {
-  ready: false,
-  cube: {},      // "line||adType||intent||week" → {sp,sl,im,ck,or,un}
-  termCube: {},  // "term||line" → {sp,ck,or,sl}  (SP only)
-  weeks: []      // sorted unique ISO weeks
-};
-
-// ── UNIFIED WEEKLY CUBE (formulated, not fixed) ──────────────────────────────
-// Key: "line||YYYY-WNN"  →  {revenue, units, sessions, pageViews, adSpend, adSales,
-//                            impressions, adClicks, orders, adUnits, acos, roas, ctr, cvr, tacos, organicPct}
-// Populated by business report upload + ads upload. All render views read from here.
-var WEEKLY_CUBE = {};
-var WEEKLY_WEEKS = []; // sorted unique weeks present in cube
+// (UPLOADED, ADS_STATE, WEEKLY_CUBE, WEEKLY_WEEKS declared before INIT above)
 
 function isoWeekFromDate(dtStr) {
   var parts = dtStr.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
@@ -2642,7 +2635,7 @@ function initAdsStreamProcessor(headerLine, fname) {
   }
 
   var hasWeekCol = col['week'] !== undefined, hasYearCol = col['year'] !== undefined;
-  window.ADS_STATE = {ready: false, cube: {}, termCube: {}, weeks: []};
+  ADS_STATE = {ready: false, cube: {}, termCube: {}, weeks: []};
   var weekSet = {}, processed = 0;
   var hasTerm = col['search term'] !== undefined, colTerm = hasTerm ? col['search term'] : -1;
   var colAsin=col['advertised product id'], colDate=col['date'], colAdProd=col['ad product'];
@@ -2672,15 +2665,15 @@ function initAdsStreamProcessor(headerLine, fname) {
         var spend=pn(row[colCost]), sales=pn(row[colSales]), impr=pn(row[colImpr]);
         var clicks=pn(row[colClicks]), orders=pn(row[colPurch]), units=pn(row[colUnits]);
         var key = ln+'||'+adType+'||'+intent+'||'+week;
-        if (!window.ADS_STATE.cube[key]) window.ADS_STATE.cube[key]={sp:0,sl:0,im:0,ck:0,or:0,un:0};
-        var c=window.ADS_STATE.cube[key]; c.sp+=spend;c.sl+=sales;c.im+=impr;c.ck+=clicks;c.or+=orders;c.un+=units;
+        if (!ADS_STATE.cube[key]) ADS_STATE.cube[key]={sp:0,sl:0,im:0,ck:0,or:0,un:0};
+        var c=ADS_STATE.cube[key]; c.sp+=spend;c.sl+=sales;c.im+=impr;c.ck+=clicks;c.or+=orders;c.un+=units;
         weekSet[week]=1;
         if (adType==='SP' && hasTerm) {
           var term=(row[colTerm]||'').trim().replace(/^"+|"+$/g,'').toLowerCase();
           if (term && term!=='--' && term.indexOf('b0')!==0 && term.indexOf('b09')!==0) {
             var tkey=term+'||'+ln;
-            if (!window.ADS_STATE.termCube[tkey]) window.ADS_STATE.termCube[tkey]={sp:0,ck:0,or:0,sl:0,term:term,line:ln};
-            var tc=window.ADS_STATE.termCube[tkey]; tc.sp+=spend;tc.ck+=clicks;tc.or+=orders;tc.sl+=sales;
+            if (!ADS_STATE.termCube[tkey]) ADS_STATE.termCube[tkey]={sp:0,ck:0,or:0,sl:0,term:term,line:ln};
+            var tc=ADS_STATE.termCube[tkey]; tc.sp+=spend;tc.ck+=clicks;tc.or+=orders;tc.sl+=sales;
           }
         }
         setWeeklyCube(ln, week, {adSpend:spend,adSales:sales,impressions:impr,adClicks:clicks,orders:orders,adUnits:units});
@@ -2688,8 +2681,8 @@ function initAdsStreamProcessor(headerLine, fname) {
       }
     },
     finish: function() {
-      window.ADS_STATE.weeks = Object.keys(weekSet).sort();
-      window.ADS_STATE.ready = true;
+      ADS_STATE.weeks = Object.keys(weekSet).sort();
+      ADS_STATE.ready = true;
       var uslot = document.getElementById('uslot-ads'); if (uslot) uslot.classList.add('ok');
       var ust = document.getElementById('ust-ads');
       if (ust) ust.textContent = (fname||'Unified Ads') + ' · ' + processed.toLocaleString() + ' rows · ' + ADS_STATE.weeks.length + ' wks';
