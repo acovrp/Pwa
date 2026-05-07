@@ -451,21 +451,44 @@ tbody tr.l3-row.open{display:table-row}
   <!-- TOP KPIs -->
   <div class="kpi-row" id="amz-kpi-row"></div>
 
-  <!-- PRODUCT TREND TABLE -->
+  <!-- PRODUCT TREND TABLE (metric tabs — mirrors Flipkart) -->
   <div class="section-card">
     <div class="section-hd">
       <div>
-        <div class="section-title">Amazon · Unified Diagnostics</div>
-        <div class="section-desc" id="amz-mode-desc">Weekly · Business + Ads merged · TACOS/ACOS/ROAS per product per week</div>
+        <div class="section-title">Amazon · Product Performance</div>
+        <div class="section-desc" id="amz-mode-desc">Monthly totals · Jan–May</div>
+      </div>
+      <div class="section-controls" style="flex-wrap:wrap;gap:8px">
+        <div class="metric-tabs" id="amz-metric-tabs">
+          <button class="metric-tab active" onclick="setAmzMetric('units',this)">Units</button>
+          <button class="metric-tab" onclick="setAmzMetric('revenue',this)">Revenue</button>
+          <button class="metric-tab" onclick="setAmzMetric('organic',this)">Org%</button>
+          <button class="metric-tab" onclick="setAmzMetric('adspend',this)">Ad Spend</button>
+          <button class="metric-tab" onclick="setAmzMetric('acos',this)">ACOS</button>
+          <button class="metric-tab" onclick="setAmzMetric('tacos',this)">TACoS</button>
+          <button class="metric-tab" onclick="setAmzMetric('ctr',this)">CTR</button>
+          <button class="metric-tab" onclick="setAmzMetric('cvr',this)">CVR</button>
+        </div>
+      </div>
+    </div>
+    <div class="tbl-wrap" id="amz-product-tbl"></div>
+  </div>
+
+  <!-- WEEKLY DIAGNOSTICS (TACoS/ACOS/ROAS per product per week — upload Unified Ads to populate) -->
+  <div class="section-card">
+    <div class="section-hd">
+      <div>
+        <div class="section-title">Amazon · Weekly Diagnostics</div>
+        <div class="section-desc">TACoS · ACOS · ROAS · CTR · CVR per product per week · requires Unified Ads upload</div>
       </div>
       <div class="section-controls">
-        <div class="toggle-group" style="margin-right:8px">
+        <div class="toggle-group">
           <button class="toggle-btn active" onclick="setUnifiedGroup('line',this)">By Product</button>
           <button class="toggle-btn" onclick="setUnifiedGroup('cat',this)">By Category</button>
         </div>
       </div>
     </div>
-    <div class="tbl-wrap" id="amz-product-tbl"></div>
+    <div class="tbl-wrap" id="amz-weekly-tbl"></div>
   </div>
 
   <!-- ADS INTELLIGENCE PANEL -->
@@ -1819,7 +1842,7 @@ function toggleAdsL1(btn, ln){
 
 // ── UNIFIED WEEKLY TABLE (formulated, replaces old monthly product table) ───
 function renderUnifiedWeeklyTable() {
-  var container = document.getElementById('amz-product-tbl');
+  var container = document.getElementById('amz-weekly-tbl');
   if (!container) return;
   if (!WEEKLY_WEEKS.length) {
     container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-secondary)">Auto-loading Business Report data…</div>';
@@ -2039,6 +2062,7 @@ function switchTab(t,el){
 // Re-render all product tables when gran/display/view changes
 function renderTables(){
   renderOvTrend();
+  renderTrendTable('amz-product-tbl','amz', S.amzMetric==='organic'?'organic_pct':S.amzMetric);
   renderUnifiedWeeklyTable();
   renderTrendTable('flk-product-tbl','flk',S.flkMetric==='organic'?'organic_pct':S.flkMetric);
 }
