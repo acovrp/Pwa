@@ -35,7 +35,7 @@ The outcome is obvious given the data and Aman's established patterns. Do it, lo
 14. **Brain/context file updates** — update `sleepycat_brain.md` and `agent_context.md` with session learnings. Push to `acovrp/Pwa`.
 15. **Running the agent** — `python run_agent.py` from its directory. Apply known fixes (e.g. UTF-8 encoding) without asking.
 16. **update_brain command** — triggered by typing `update brain: [content]` at the agent terminal prompt. Shows proposed addition, asks y/n. On y: appends to `C:\Users\User\Downloads\pwa-push\brain\sleepycat_brain.md`, commits, and pushes to `acovrp/Pwa`. On n: logs rejection, nothing is written. Never push brain changes without approval.
-17. **SP-API daily pull** — run `python run_spapi.py` from agent folder. Pulls listings + sales & traffic, saves to `agent_data/spapi_data.json`, sends Telegram callouts. After each pull, auto-copies `br_history.csv` + `ba_sqp.json` → `pwa-push/data/` → git commits + pushes. Task Scheduler registered (`SleepyCat-Daily`, 7:30 AM daily, `StartWhenAvailable=True`, `WakeToRun=True`). Also sends daily Telegram morning briefing (yesterday rev/units, MTD, top 3 products, sessions drops). Do not re-pull more than once per day.
+17. **SP-API daily pull** — run `python run_spapi.py` from agent folder. Pulls last 3 days of sales & traffic (upserts rows where sessions=0), pulls BA SQP, updates `data/snapshot.json`, pushes all to git. Task Scheduler registered (`SleepyCat-Daily`, 7:30 AM daily, `StartWhenAvailable=True`, `WakeToRun=True`). Sends daily Telegram morning briefing (yesterday rev/units, MTD, top 3 products, sessions drops). 3-day lookback is built-in; safe to run manually but redundant if already ran today.
 
 ### L1 — Decide + Escalate to Aman for Approval
 You form a recommendation with data backing, then ask Aman to approve/reject/modify.
@@ -184,6 +184,7 @@ Never refuse silently. Never execute a risky action and mention the risk after. 
 | `asin_map.json` | `pwa-push/data/` | 827 ASINs → product name + category. Source: `Size SKU sheet.xlsx` Sheet2. Single source of truth — never use hardcoded ASIN slugs. |
 | `ba_sqp.json` | `pwa-push/data/` | Brand Analytics Search Query Performance. 147 SleepyCat search terms, monthly data (position, click share, conversion share per term). Updated daily by SP-API runner. |
 | `st_report.csv` | `pwa-push/data/` | SP Search Term report — 22k+ records, last 30 days. Pulled daily via Advertising API (`pull_search_term_report` in spapi_module.py). Auto-loaded by dashboard → Keyword Intelligence tab. |
+| `snapshot.json` | `pwa-push/data/` | Dashboard snapshot — full PRODUCTS + WEEKLY_CUBE + GLOBALS state exported from Marketplace OS. Embedded as `SNAPSHOT_INLINE` inside `index.html` for `file://` local load (synchronous, no fetch). Rebuild via "Export Snapshot" button → PowerShell inject command. Updated daily by SP-API runner after BR merge. |
 | `chat_log.jsonl` | `agent_data/memory/` | Full audit log of every chat query: timestamp, user (cli / tg:@username), message, response, tools called, error flag. |
 | `action_log.jsonl` | `agent_data/memory/` | L0/L1 action log. |
 | `trust_state.json` | `agent_data/trust/` | Per-category trust levels and approval streaks. |
@@ -222,13 +223,15 @@ New users who send `/start` trigger an Approve/Reject notification to Aman (owne
 
 ### Daily Automation (Task Scheduler — 7:30 AM)
 `run_spapi.bat` → `python -u run_spapi.py`:
-1. Pulls SP-API listings + sales & traffic → appends to `br_history.csv`
-2. Pulls Brand Analytics SQP → saves `ba_sqp.json`
-3. Pushes both to `acovrp/Pwa` via git
-4. Sends Telegram morning briefing (yesterday + MTD + top 3 + sessions drops)
+1. Pulls last **3 days** of SP-API sales & traffic (days 1, 2, 3 ago) — handles Amazon sessions lag
+2. Upsert logic: if a date row already exists with `sessions=0`, it is replaced when fresh data has `sessions>0`. If sessions>0 already, skips to avoid overwriting good data.
+3. Pulls Brand Analytics SQP → saves `ba_sqp.json`
+4. Pushes `br_history.csv` + `ba_sqp.json` + `data/snapshot.json` to `acovrp/Pwa` via git
+5. Sends Telegram morning briefing (yesterday + MTD + top 3 + sessions drops) — product names are Markdown-escaped to prevent parse errors
 - `StartWhenAvailable=True` — runs on next startup if missed
 - `WakeToRun=True` — wakes laptop from sleep at 7:30 AM
 - Log: `agent_spapi.log` in agent directory
+- Do not re-pull more than once per day (3-day lookback is built in; extra runs are safe but redundant)
 
 ### CLI Commands (when running `python run_agent.py`)
 | Command | What it does |

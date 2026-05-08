@@ -74,7 +74,7 @@ Aman leads 5 specialist roles. The agent does not manage them directly — it pr
 
 Aman's single-file HTML command center, built personally and maintained by the agent.
 
-**Current version: v7.3** (full audit + 30 bug fixes, May 2026; filter fixes May 2026; all upload processors wired May 2026)
+**Current version: v7.4** (ads metrics fix + snapshot system, May 8 2026)
 **Live URL (team, auth-gated): https://scos.aman-verma-741.workers.dev/** — Cloudflare Pages + Cloudflare Access, Google login required, `@sleepycat.in` domain whitelisted, external stakeholders added manually
 **Live URL (public, no auth): https://acovrp.github.io/Pwa/** — GitHub Pages, still live
 **Local file: `C:\Users\User\Downloads\pwa-push\index.html`**
@@ -99,8 +99,8 @@ Aman's single-file HTML command center, built personally and maintained by the a
 ### Known Data Sources
 | Source | What it feeds |
 |---|---|
-| Amazon Business Report (auto via SP-API) | Units, revenue, sessions, CVR, CTR (page_views/sessions) by ASIN — `br_history.csv` auto-loaded on page open |
-| SP Sponsored Products report (manual upload) | Ad spend, ACOS, TACoS, Org% per product per month — upload via SP slot. Current file: `C:\Users\User\Downloads\Report_-_04_15_2026T14_20_10 (1).csv` (~250MB). Automation in progress. |
+| Amazon Business Report (auto via SP-API) | Units, revenue, sessions, organic CVR (units/sessions), organic CTR (page_views/sessions) by ASIN — `br_history.csv` auto-loaded on page open |
+| Unified Ads report (manual upload or future auto-pull) | Ad spend, ACOS, TACoS, Org%, ad CTR (ad_clicks/impressions), ad CVR (ad_units/impressions) per product per month. Upload via Unified Ads slot. `initAdsStreamProcessor` writes to both `WEEKLY_CUBE` (weekly diagnostics) and `PRODUCTS.channels.amz` (monthly metric tabs). Overwrites CTR with ad CTR on upload. |
 | SP Search Terms report (manual CSV or Ads API) | Keyword spend, clicks, ACOS → Keyword Intelligence tab |
 | Brand Analytics — Search Catalog Performance (manual CSV) | Search funnel — impression/click/ATC/purchase share → Search Funnel tab (Category Demand, SC Funnel Share, etc.) |
 | Brand Analytics — Search Terms Report (SP-API auto) | SC organic search presence — 147 search terms, position #1/2/3, click share, conv share, month-over-month → SC Organic Search Presence view |
@@ -122,6 +122,13 @@ Amazon SC SP report columns (after normalization): `date` (format: "Apr 23, 2026
 - New view "SC Organic Search Presence" in Search Funnel tab: shows 147 terms where SC appears in top 3 clicks, March vs April MoM, position badge, click share%, conv share%, 4 sort modes
 - `BA_SQP` global + auto-fetch of `data/ba_sqp.json` on page load
 - `data/ba_sqp.json` and `data/st_report.csv` committed to repo — auto-loaded on page open
+
+### v7.4 Changes (May 8 2026)
+- **Ads metrics wired**: `initAdsStreamProcessor` now builds `monthAgg` per ASIN per month (4 week-slots), writes to `PRODUCTS.channels.amz` on `finish()`: `adspend`, `acos`, `tacos`, `organic_pct`, `ctr` (ad CTR overwrite), `adcvr`. Also updates `AD_SPEND` global and calls `renderAmzKpi() + renderTables()`.
+- **Two CVR metrics**: `cvr` = organic (units/sessions, from BR) and `adcvr` = ad CVR (ad_units/impressions, from Unified Ads). Both have tabs in Amazon Product Performance.
+- **CTR = ad CTR**: `ch.ctr` for Amazon is now ad_clicks/impressions from Unified Ads. Business Report's page_views/sessions value is overwritten on Unified Ads upload.
+- **Snapshot system**: `exportSnapshot()` button in dashboard header serializes `PRODUCTS.channels` + `WEEKLY_CUBE` + `AD_SPEND` → `snapshot.json`. `SNAPSHOT_INLINE` var baked into `index.html` for synchronous load on `file://`. `applySnapshot()` runs on page load — no server needed for local file. `fetch('./data/snapshot.json')` also runs for hosted version (applies if newer than inline). Workflow: upload files → Export Snapshot → save to `data/snapshot.json` → update inline in `index.html` via PowerShell regex replace → commit both.
+- **Update inline snapshot**: `$snap = Get-Content 'data/snapshot.json' -Raw; $html = Get-Content 'index.html' -Raw; $html = [regex]::Replace($html, '(?s)var SNAPSHOT_INLINE = \{.*?\};', "var SNAPSHOT_INLINE = $snap;"); [IO.File]::WriteAllText('index.html', $html)`
 
 ### WoW Inline + Gran Toggle (May 2026 — this session)
 - **Month `+` expand**: each month column has expand button → expands inline to weekly sub-cols; current partial month expands to individual day columns (`RECENT_DAY_LABELS`)
@@ -272,7 +279,7 @@ Aman is building the Marketplace OS into a product — an AI-led marketplace man
 | Google Sheets | Search funnel data layer | 26 months BA data |
 | Brand Analytics | Search catalog performance | Monthly/weekly exports |
 | Snowflake | Amazon Ads data via `SLEEPYCAT_DB.MAPLEMONK.V_ADS_ENRICHED`. SP 100% ASIN-matched. SD +40% inflated (Airbyte bug). Account 2 missing. BA data: `ASP_GET_BRAND_ANALYTICS_SEARCH_TERMS_REPORT`. |
-| Marketplace OS | Consolidated dashboard | v7.3, hosted at https://acovrp.github.io/Pwa/ |
+| Marketplace OS | Consolidated dashboard | v7.4, hosted at https://acovrp.github.io/Pwa/ |
 
 ### SP-API (Mark1) — Now Live (May 2026)
 - App: Mark1, Developer Central, Private developer, self-authorized (1 of 10 slots used)
@@ -285,7 +292,8 @@ Aman is building the Marketplace OS into a product — an AI-led marketplace man
 - After each daily pull, `run_spapi.py` pushes three files to `pwa-push/data/` via git: `br_history.csv` (sessions/traffic), `st_report.csv` (search terms — Ads API when authorized, else watch folder), `ba_sqp.json` (SC organic search presence). Each committed + pushed separately → Cloudflare redeploys → team sees fresh data automatically
 - Historical backfill: `spapi_history.py` — pulls day-by-day GET_SALES_AND_TRAFFIC_REPORT from Jan 1 2026, checkpointed (safe to kill and resume). 56,264 rows pulled as of May 1 2026.
 - `data/br_history.csv` is committed in `acovrp/Pwa` repo — dashboard auto-loads it on open (relative path first, localhost fallback)
-- Telegram callouts: pending wiring. Task Scheduler scheduling: pending.
+- **Session backfill (May 8 2026)**: `_append_to_br_history` now upserts — if date exists with sessions=0 (Amazon lag), removes old rows and rewrites with fresh data. If sessions>0, skips. `run_daily_checks` pulls days 1+2+3 ago on every run to backfill sessions Amazon releases 2-3 days late. This is fully automatic.
+- Telegram callouts live. Task Scheduler registered.
 
 **What SP-API pulls (daily at 7:30 AM via run_spapi.py):**
 - `GET_MERCHANT_LISTINGS_ALL_DATA` — 1165 ASINs, TSV, fields: `asin1`, `status`, `seller-sku`, `item-name`, `quantity`
@@ -323,6 +331,15 @@ Aman is building the Marketplace OS into a product — an AI-led marketplace man
 - GitHub: `acovrp/Pwa`, branch `main` — dashboard, brain files, agent context all live here
 - GitHub CLI: `C:\Program Files\GitHub CLI\gh.exe` (not in PATH — use full path)
 - GitHub auth: logged in as `acovrp`
+
+---
+
+### Flipkart Seller API (May 8 2026 — pending approval)
+- Credentials in `config.yaml`: `flipkart_app_id`, `flipkart_app_secret`
+- Token URL: `GET https://api.flipkart.net/oauth-service/oauth/token?grant_type=client_credentials&scope=Seller_Api` — Basic auth header with base64(`app_id:app_secret`). **No `/sellers/` in the URL — that's wrong.**
+- Status: App created in Seller Hub → Manage Profile → Developer Access. Currently 401 "Self Access Application is not in Approved state" — pending Flipkart manual approval (24-72h).
+- Once approved: build `fk_module.py` (FlipkartClient) to pull orders → `fk_history.csv` → dashboard Flipkart channels auto-populate. Replaces manual CSV upload.
+- Orders API: `POST https://api.flipkart.net/sellers/orders/v2/search` with Bearer token.
 
 ---
 
