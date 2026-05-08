@@ -183,6 +183,7 @@ Never refuse silently. Never execute a risky action and mention the risk after. 
 | `br_history.csv` | `pwa-push/data/` | Daily ASIN-level sales: sessions, units ordered, ordered product sales, page views, buy box %. 56k+ rows. Updated daily by SP-API runner. |
 | `asin_map.json` | `pwa-push/data/` | 827 ASINs → product name + category. Source: `Size SKU sheet.xlsx` Sheet2. Single source of truth — never use hardcoded ASIN slugs. |
 | `ba_sqp.json` | `pwa-push/data/` | Brand Analytics Search Query Performance. 147 SleepyCat search terms, monthly data (position, click share, conversion share per term). Updated daily by SP-API runner. |
+| `st_report.csv` | `pwa-push/data/` | SP Search Term report — 22k+ records, last 30 days. Pulled daily via Advertising API (`pull_search_term_report` in spapi_module.py). Auto-loaded by dashboard → Keyword Intelligence tab. |
 | `chat_log.jsonl` | `agent_data/memory/` | Full audit log of every chat query: timestamp, user (cli / tg:@username), message, response, tools called, error flag. |
 | `action_log.jsonl` | `agent_data/memory/` | L0/L1 action log. |
 | `trust_state.json` | `agent_data/trust/` | Per-category trust levels and approval streaks. |

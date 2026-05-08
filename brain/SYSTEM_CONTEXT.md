@@ -57,7 +57,7 @@ C:\Users\User\Downloads\pwa-push\
 │   ├── ba_sqp.json           ← SC organic search presence (147 terms, last 2 months).
 │   │                           Auto-loaded by dashboard. Updated daily by run_spapi.py.
 │   └── st_report.csv         ← SP Search Terms for Keyword Intelligence tab.
-│                               Updated daily — Ads API when authorized, else watch folder fallback.
+│                               Updated daily via Advertising API (live May 8 2026). 22k+ records, last 30 days.
 ├── brain/                    ← MASTER BRAIN — all tools read from here
 │   ├── sleepycat_brain.md    ← Business knowledge, who Aman is, channels, metrics
 │   └── agent_context.md      ← How the agent behaves, L0/L1/L2 rules
@@ -153,12 +153,17 @@ When brain is updated:
 - Always syntax-check after JS edits: extract script, run `node --check`
 - Deploy: edit locally → git push → GitHub Pages auto-updates in ~60 seconds
 
-### Ads integration — BROKEN (May 2026, Aman fixing)
-- `processUnifiedAdsReport()`, `ADS_STATE`, `uslot-ads`, `ads-panel-card`, `renderAdsPanel()` were injected into index.html during May 2026 session
-- **Currently broken: 0 rows processed** — column name bug: code looks for `"advertised product id"` but CSV column header is `"Advertised product ID (ASIN)"`. The `(ASIN)` suffix breaks the lookup, function exits early silently.
-- `az-ads-dashboard.html` at `C:\Users\User\Downloads\` is a useless standalone file — can be deleted
-- **North star decided:** Agent parses raw ads CSV server-side → writes `data/ads_agg.json` → dashboard loads JSON. No browser-side CSV parsing ever. Inline expand drill-down (not tabs). See sleepycat_brain.md for full vision.
-- Do not build on top of the broken injected code. Fix the column name or tear it out entirely when Aman is ready.
+### Advertising API — LIVE (May 8 2026)
+- Amazon Advertising API authorized for SleepyCat New 2024 (vendor, profile `1306806054242557`)
+- LWA app: `ads_client_id` = `amzn1.application-oa2-client.da984bffb21a4bb0af46968ddad911b9` (under Aman's developer account)
+- Credentials in config.yaml: `ads_client_id`, `ads_client_secret`, `ads_refresh_token`, `ads_profile_id`
+- Auth endpoint: `https://eu.account.amazon.com/ap/oa` — India uses EU LWA (NOT www.amazon.com)
+- Account structure: SLEEP MANAGEMENT PVT LTD (Manager, `amzn1.ads1.ma1.e6ofylyyj1ukqkduc7dj6jutp`) → SleepyCat New 2024 (vendor, active) + SLEEPYCAT (old seller, inactive)
+- Authorize with SLEEP MANAGEMENT PVT LTD account when re-authorizing
+- Daily pull: `pull_search_term_report(config, days_back=30)` in `spapi_module.py` → `agent_data/st_report.csv` → pushed to `pwa-push/data/st_report.csv`
+- Column fix applied: API v3 uses `searchTerm` (not `customerSearchTerm`), `purchases14d` (not `orders14d`)
+- Utility scripts: `get_ads_token.py` (OAuth flow), `test_ads_api.py` (connection check) — both in agent dir
+- Dashboard ads panel (processUnifiedAdsReport etc.) still broken — separate issue, do not fix with this API. North star: agent writes `data/ads_agg.json` server-side → dashboard loads JSON.
 
 ### Gran Toggle + Sum/Avg Semantics (fixed May 2026)
 - **Monthly + Sum** = month total
