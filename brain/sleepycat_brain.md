@@ -293,12 +293,15 @@ Aman is building the Marketplace OS into a product — an AI-led marketplace man
 - `GET_BRAND_ANALYTICS_SEARCH_TERMS_REPORT` — filters 713K rows for SC ASINs → 147 SC search terms with position, click share, conv share. Saves `agent_data/ba_sqp.json` → pushed to `pwa-push/data/ba_sqp.json`. Pulls last 2 complete months. **API limitation**: does NOT return total search volume, total clicks, or absolute click counts — only `clickShare%` and `conversionShare%`. Seller Central BA UI shows more columns that are not exposed in the API.
 - Does NOT cover ad spend — stays Snowflake/ad report CSVs
 
-**Advertising API (pending authorization):**
-- `AdsAPIClient` class built in `spapi_module.py` — uses `advertising-api-eu.amazon.com`
-- Blocked: existing LWA app (Mark1) not registered for `advertising::campaign_management` scope
-- To fix: register app at `advertising.amazon.com → Tools → Advertising API` OR contact Amazon Ads account manager to enable API access
-- Once authorized: will auto-pull SP Search Term report (30 days) → `agent_data/st_report.csv` → `pwa-push/data/st_report.csv` → Keyword Intelligence tab auto-populates
-- Current fallback: watch folder scan for manually-dropped search term CSV
+**Advertising API (LIVE — May 8 2026):**
+- `AdsAPIClient` class in `spapi_module.py` — uses `advertising-api-eu.amazon.com`
+- LWA app: client_id `amzn1.application-oa2-client.da984bffb21a4bb0af46968ddad911b9` (under Aman's developer account)
+- Approved scopes: `advertising::campaign_management` + audiences + others
+- Auth endpoint: `https://eu.account.amazon.com/ap/oa` (India uses EU LWA — NOT www.amazon.com)
+- Account structure: SLEEP MANAGEMENT PVT LTD (Manager Account, `amzn1.ads1.ma1.e6ofylyyj1ukqkduc7dj6jutp`) → SleepyCat New 2024 (active vendor, profile `1306806054242557`) + SLEEPYCAT (old seller, inactive)
+- Target profile: `1306806054242557` (SleepyCat New 2024, vendor) — saved in config.yaml as `ads_profile_id`
+- Credentials saved in config.yaml: `ads_client_id`, `ads_client_secret`, `ads_refresh_token`
+- Daily pull: `pull_search_term_report()` in `spapi_module.py` → `agent_data/st_report.csv` → `pwa-push/data/st_report.csv` → Keyword Intelligence tab auto-populates
 
 **Critical calibration note:**
 - `GET_MERCHANT_LISTINGS_ALL_DATA` `status` column = merchant-fulfilled status only
