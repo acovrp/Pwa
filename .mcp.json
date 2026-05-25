@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "image-generator": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@llmindset/mcp-hfspace",
+        "black-forest-labs/FLUX.1-schnell"
+      ],
+      "env": {}
+    }
+  }
+}
