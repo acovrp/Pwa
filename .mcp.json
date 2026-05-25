@@ -9,6 +9,16 @@
         "black-forest-labs/FLUX.1-schnell"
       ],
       "env": {}
+    },
+    "image-editor": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@llmindset/mcp-hfspace",
+        "mcp-tools/FLUX.1-Kontext-Dev"
+      ],
+      "env": {}
     }
   }
 }
