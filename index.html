@@ -1244,6 +1244,11 @@ function renderFlkKpi(){
   var totalR=janR+febR+marR+aprR+mayR;
   var totalU=janU+febU+marU+aprU+mayU;
   var fkAdsTotal=(window.UPLOADED_TOTALS&&window.UPLOADED_TOTALS.fkads)||0;
+  if(!fkAdsTotal&&window.WOW_DATA&&WOW_DATA.fk&&WOW_DATA.fk.ads){
+    Object.keys(WOW_DATA.fk.ads).forEach(function(wk){
+      if(wk.indexOf('2026')>=0){fkAdsTotal+=((WOW_DATA.fk.ads[wk].total||{}).spend||0);}
+    });
+  }
   var fkTacos=totalR>0&&fkAdsTotal>0?Math.round(fkAdsTotal/totalR*1000)/10:null;
   var fkTacosLabel=fkTacos!==null?fkTacos+'%':'Upload FK Ads';
   var fkTacosSub=fkTacos!==null?'FK ad spend \u00f7 GMV':'FK Ads CSV not loaded';
