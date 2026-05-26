@@ -63,6 +63,20 @@ Aman leads 5 specialist roles. The agent does not manage them directly — it pr
 - Different catalog and ad mechanics from Amazon
 - Organic share historically at ~40% but collapsed to ~7.7% — under investigation
 
+**FK Gross / OIV methodology (confirmed May 2026):**
+- FK Gross = OIV (Order Item Value) = `listing_price + CLF` — what the customer actually pays FK
+- `listing_price` = `sellingPrice` from FK order API — what SC sets as the listed price
+- `CLF` (Customer Logistics Fee) = per-SKU fee FK charges the customer for logistics. NOT in seller settlement for NON_FBF sellers from Q2 FY25-26 onwards. Stored in FK listing metadata → `attributeData.customer_logistics_fee`. Fetched via `get-listings-info-by-id` API using session replay.
+- `customer_price` = `customerPrice` from order API — actual buying price after FK-funded bank/card offers (FK absorbs this discount, not SC)
+- All 297 active SKUs have CLF mapped. File: `agent_data/fk_clf_by_sku_actual.csv`
+- FK vs Amazon YTD history now tracked in `fk_history.csv` (March 1 onwards, updated daily)
+
+**FK vs Amazon channel comparison (Apr-May 2026):**
+- FK runs at 22–63% of Amazon's weekly gross (unit economics similar, volume is the gap)
+- FK ASP ≈ AMZ ASP for mattresses within ±0.6% (validated at SKU×week level) — proves OIV methodology is correct
+- Pillow/bedding show 15–44% divergence — Amazon running permanent coupons on those SKUs, not a calc error
+- FK is 3–4pp less discounted than Amazon at channel level, but this is product mix (mattresses dominate FK)
+
 ### Quick Commerce (Growth channel)
 - Blinkit, Zepto, Swiggy Instamart
 - Underperformance acknowledged — attributed to channel growth pace and bandwidth constraints
@@ -100,6 +114,7 @@ Aman's single-file HTML command center, built personally and maintained by the a
 | Source | What it feeds |
 |---|---|
 | Amazon Business Report (auto via SP-API) | Units, revenue, sessions, organic CVR (units/sessions), organic CTR (page_views/sessions) by ASIN — `br_history.csv` auto-loaded on page open |
+| FK Order History (auto via FK Seller API) | Daily SKU-level FK orders — units, listing_price, CLF, OIV, customer_price — `fk_history.csv`. Updated daily by `fk_history_agent.py` via `run_spapi.py`. Backfilled from March 1 2026. |
 | Unified Ads report (manual upload or future auto-pull) | Ad spend, ACOS, TACoS, Org%, ad CTR (ad_clicks/impressions), ad CVR (ad_units/impressions) per product per month. Upload via Unified Ads slot. `initAdsStreamProcessor` writes to both `WEEKLY_CUBE` (weekly diagnostics) and `PRODUCTS.channels.amz` (monthly metric tabs). Overwrites CTR with ad CTR on upload. |
 | SP Search Terms report (manual CSV or Ads API) | Keyword spend, clicks, ACOS → Keyword Intelligence tab |
 | Brand Analytics — Search Catalog Performance (manual CSV) | Search funnel — impression/click/ATC/purchase share → Search Funnel tab (Category Demand, SC Funnel Share, etc.) |
@@ -322,9 +337,22 @@ Aman is building the Marketplace OS into a product — an AI-led marketplace man
 - CVR floor: < 0.5% (1% threshold flags too many size variants)
 
 ### Agent Infrastructure
+
+**Primary: Oracle Cloud VM (24/7, always-on)**
+- VM: `VM.Standard.E2.1.Micro` (1 OCPU, 1GB RAM, Always Free) at `161.118.175.141`
+- SSH: `ssh -i ~/.ssh/oci_sleepycat ubuntu@161.118.175.141` (from OCI Cloud Shell)
+- Systemd service: `sudo systemctl status/restart/logs sleepycat-agent`
+- Logs: `sudo tail -f /var/log/sleepycat-agent.log`
+- SP-API cron: daily 2:00 AM UTC (7:30 AM IST) → `/var/log/sleepycat-spapi.log`
+- Working dir: `/home/ubuntu/sleepycat-agent/`
+- pwa-push repo: `/home/ubuntu/pwa-push/` — all data stays in git, VM is stateless
+- Watch folder: `/home/ubuntu/sleepycat-data/` (transient drop zone — not persisted)
+- Config: `/home/ubuntu/sleepycat-agent/config.yaml` (never committed to git)
+- To update code on VM: edit locally → push to git → `ssh ... 'cd ~/sleepycat-agent && git pull && sudo systemctl restart sleepycat-agent'`
+
+**Secondary: Windows laptop (interactive/dev)**
 - Agent entry point: `C:\Users\User\Downloads\sleepycat-agent\sleepycat-agent\run_agent.py`
 - Start command: `cd C:\Users\User\Downloads\sleepycat-agent\sleepycat-agent && python run_agent.py`
-- Auto-starts on Windows login via Task Scheduler ("SleepyCat Agent" task)
 - Dashboard repo (local): `C:\Users\User\Downloads\pwa-push\index.html`
 - Brain path (config.yaml): `C:\Users\User\Downloads\pwa-push\brain\sleepycat_brain.md`
 - Watch folder: `C:\Users\User\Documents\SleepyCat-Data`
@@ -334,12 +362,14 @@ Aman is building the Marketplace OS into a product — an AI-led marketplace man
 
 ---
 
-### Flipkart Seller API (May 8 2026 — pending approval)
+### Flipkart Seller API (LIVE — approved May 2026)
 - Credentials in `config.yaml`: `flipkart_app_id`, `flipkart_app_secret`
 - Token URL: `GET https://api.flipkart.net/oauth-service/oauth/token?grant_type=client_credentials&scope=Seller_Api` — Basic auth header with base64(`app_id:app_secret`). **No `/sellers/` in the URL — that's wrong.**
-- Status: App created in Seller Hub → Manage Profile → Developer Access. Currently 401 "Self Access Application is not in Approved state" — pending Flipkart manual approval (24-72h).
-- Once approved: build `fk_module.py` (FlipkartClient) to pull orders → `fk_history.csv` → dashboard Flipkart channels auto-populate. Replaces manual CSV upload.
-- Orders API: `POST https://api.flipkart.net/sellers/orders/v2/search` with Bearer token.
+- Status: **Approved and live** (confirmed 2026-05-19).
+- Shipments API: `POST https://api.flipkart.net/sellers/v3/shipments/filter` — paginated, pre/post-dispatch buckets. Implemented in `fk_module.py` (`get_token()` + `fetch_shipments()`).
+- `fk_history.csv` built and live — daily ASIN-level FK order history from March 1 2026. Schema: `date, sku, asin, product, category, units, listing_price, clf, oiv, customer_price`. Mirrors `br_history.csv`. Updated daily by `run_spapi.py` via `fk_history_agent.py`.
+- CLF extraction: FK Seller Hub session replay (Selenium CDP → cookies → requests) → `get-listings-info-by-id` API → `attributeData.customer_logistics_fee`. 297 SKUs mapped in `fk_clf_by_sku_actual.csv`.
+- Session replay technique: capture browser session cookies via Chrome DevTools Protocol, replay with Python `requests.Session()` to call FK's internal REST APIs directly. ~8 req/sec, ~36s for full 297-listing extract. Works for any data visible in FK Seller Hub.
 
 ---
 

@@ -181,6 +181,8 @@ Never refuse silently. Never execute a risky action and mention the risk after. 
 | File | Location | Contents |
 |---|---|---|
 | `br_history.csv` | `pwa-push/data/` | Daily ASIN-level sales: sessions, units ordered, ordered product sales, page views, buy box %. 56k+ rows. Updated daily by SP-API runner. |
+| `fk_history.csv` | `agent_data/` + `pwa-push/data/` | Daily SKU-level FK orders: date, sku, asin, product, category, units, listing_price, clf, oiv, customer_price. Mar 1 2026 onwards. `listing_price` = sellingPrice from FK API. `clf` = per-SKU CLF from `fk_clf_by_sku_actual.csv`. `oiv` = listing_price + clf (true gross). `customer_price` = actual buying price after FK-funded offers. Updated daily by `fk_history_agent.py` (called from `run_spapi.py`). |
+| `fk_clf_by_sku_actual.csv` | `agent_data/` | CLF per FK SKU/FSN — 297 SKUs, all CLF > 0. Extracted via FK Seller Hub session replay → `get-listings-info-by-id` API → `attributeData.customer_logistics_fee`. Refresh by re-running `fk_clf_final.py` after a fresh Selenium session capture. |
 | `asin_map.json` | `pwa-push/data/` | 827 ASINs → product name + category. Source: `Size SKU sheet.xlsx` Sheet2. Single source of truth — never use hardcoded ASIN slugs. |
 | `ba_sqp.json` | `pwa-push/data/` | Brand Analytics Search Query Performance. 147 SleepyCat search terms, monthly data (position, click share, conversion share per term). Updated daily by SP-API runner. |
 | `st_report.csv` | `pwa-push/data/` | SP Search Term report — 22k+ records, last 30 days. Pulled daily via Advertising API (`pull_search_term_report` in spapi_module.py). Auto-loaded by dashboard → Keyword Intelligence tab. |
@@ -221,16 +223,24 @@ Never refuse silently. Never execute a risky action and mention the risk after. 
 
 New users who send `/start` trigger an Approve/Reject notification to Aman (owner ID: `6127883562`). Approved users stored in `telegram_access.json`.
 
-### Daily Automation (Task Scheduler — 7:30 AM)
-`run_spapi.bat` → `python -u run_spapi.py`:
+### Daily Automation
+
+**Cloud VM (primary — runs even when laptop is off):**
+- Cron: `0 2 * * *` (2:00 AM UTC = 7:30 AM IST) → `python run_spapi.py`
+- Log: `/var/log/sleepycat-spapi.log` on the VM
+
+**Windows laptop (fallback — runs when logged in):**
+- Task Scheduler: `run_spapi.bat` → `python -u run_spapi.py`
+- `StartWhenAvailable=True`, `WakeToRun=True`
+- Log: `agent_spapi.log` in agent directory
+
+**What `run_spapi.py` does (both environments):**
 1. Pulls last **3 days** of SP-API sales & traffic (days 1, 2, 3 ago) — handles Amazon sessions lag
 2. Upsert logic: if a date row already exists with `sessions=0`, it is replaced when fresh data has `sessions>0`. If sessions>0 already, skips to avoid overwriting good data.
 3. Pulls Brand Analytics SQP → saves `ba_sqp.json`
 4. Pushes `br_history.csv` + `ba_sqp.json` + `data/snapshot.json` to `acovrp/Pwa` via git
-5. Sends Telegram morning briefing (yesterday + MTD + top 3 + sessions drops) — product names are Markdown-escaped to prevent parse errors
-- `StartWhenAvailable=True` — runs on next startup if missed
-- `WakeToRun=True` — wakes laptop from sleep at 7:30 AM
-- Log: `agent_spapi.log` in agent directory
+5. **FK history pull** — `fk_history_agent.py` (incremental mode): fetches FK orders since last date in `fk_history.csv` via FK Seller API, appends, pushes `fk_history.csv` to `pwa-push/data/`
+6. Sends Telegram morning briefing (yesterday + MTD + top 3 + sessions drops) — product names are Markdown-escaped to prevent parse errors
 - Do not re-pull more than once per day (3-day lookback is built in; extra runs are safe but redundant)
 
 ### CLI Commands (when running `python run_agent.py`)
