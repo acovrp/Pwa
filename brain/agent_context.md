@@ -186,7 +186,8 @@ Never refuse silently. Never execute a risky action and mention the risk after. 
 | `asin_map.json` | `pwa-push/data/` | 827 ASINs → product name + category. Source: `Size SKU sheet.xlsx` Sheet2. Single source of truth — never use hardcoded ASIN slugs. |
 | `ba_sqp.json` | `pwa-push/data/` | Brand Analytics Search Query Performance. 147 SleepyCat search terms, monthly data (position, click share, conversion share per term). Updated daily by SP-API runner. |
 | `st_report.csv` | `pwa-push/data/` | SP Search Term report — 22k+ records, last 30 days. Pulled daily via Advertising API (`pull_search_term_report` in spapi_module.py). Auto-loaded by dashboard → Keyword Intelligence tab. |
-| `snapshot.json` | `pwa-push/data/` | Dashboard snapshot — full PRODUCTS + WEEKLY_CUBE + GLOBALS state exported from Marketplace OS. Embedded as `SNAPSHOT_INLINE` inside `index.html` for `file://` local load (synchronous, no fetch). Rebuild via "Export Snapshot" button → PowerShell inject command. Updated daily by SP-API runner after BR merge. |
+| `snapshot.json` | `pwa-push/data/` | Dashboard snapshot — full PRODUCTS + WEEKLY_CUBE + GLOBALS state exported from Marketplace OS. Embedded as `SNAPSHOT_INLINE` inside `index.html` for `file://` local load (synchronous, no fetch). Rebuild via "Export Snapshot" button → PowerShell inject command. Updated daily by SP-API runner after BR merge. Also updated programmatically by `pull_ads_weekly.py`, `patch_weekly_cube.py`, `pull_ads_history.py`. |
+| `wow_data.json` | `pwa-push/data/` | WoW tab data: `fk.ads` (FK weekly ad spend per product), `az_ads.productWise` (Amazon SP weekly by product), `az_sessions.product` (weekly sessions+CVR per product from br_history). Week keys: `DD-MM-YYYY - DD-MM-YYYY`. Coverage as of 2026-05-27: FK Jan–May 21; AZ ads Feb 16–May 31; AZ sessions Jan–May 25. |
 | `chat_log.jsonl` | `agent_data/memory/` | Full audit log of every chat query: timestamp, user (cli / tg:@username), message, response, tools called, error flag. |
 | `action_log.jsonl` | `agent_data/memory/` | L0/L1 action log. |
 | `trust_state.json` | `agent_data/trust/` | Per-category trust levels and approval streaks. |
@@ -242,6 +243,20 @@ New users who send `/start` trigger an Approve/Reject notification to Aman (owne
 5. **FK history pull** — `fk_history_agent.py` (incremental mode): fetches FK orders since last date in `fk_history.csv` via FK Seller API, appends, pushes `fk_history.csv` to `pwa-push/data/`
 6. Sends Telegram morning briefing (yesterday + MTD + top 3 + sessions drops) — product names are Markdown-escaped to prevent parse errors
 - Do not re-pull more than once per day (3-day lookback is built in; extra runs are safe but redundant)
+
+### One-off / Monthly Scripts (agent dir)
+| Script | Purpose | When to run |
+|---|---|---|
+| `pull_ads_weekly.py` | Pull last 30 days SP advertised-product → `az_ads.productWise` + `adSpend` + SNAPSHOT_INLINE | After each month-end or when recent ad data is stale |
+| `pull_ads_history.py` | Backfill SP ads (up to 97-day retention) → `az_ads.productWise` + weeklyCube | One-time; re-run if > 1 month of data missing |
+| `patch_weekly_cube.py` | Convert `az_ads.productWise` → weeklyCube in snapshot.json + re-inject | When weeklyCube is missing recent ISO weeks |
+| `rebuild_az_sessions.py` | Rebuild `az_sessions.product` from br_history.csv | When AZ sessions WoW tab is stale |
+| `update_fk_wow.py` | Load FK PLA CSVs → `fk.ads` in wow_data.json | After downloading new FK ads CSV from Flipkart Ads Manager |
+| `patch_adspend.py` | Patch snapshot.json adSpend SB/SD from ads_unified.csv | After uploading new ads_unified.csv |
+
+**Amazon Ads API limits (spAdvertisedProduct report):** max 31 days/request, ~97-day rolling retention, transient 500s → use ≤20-day chunks + retry
+**weeklyCube key format:** `{slug}||{YYYY}-W{WW}` — slug = `PRODUCTS[].line` from index.html (not a string truncation)
+**acos/ctr/cvr in API output** = decimal fractions (0.15); weeklyCube stores as percentages (15.0) — multiply ×100 when converting
 
 ### CLI Commands (when running `python run_agent.py`)
 | Command | What it does |
