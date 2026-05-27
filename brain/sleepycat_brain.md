@@ -385,6 +385,69 @@ Aman is building the Marketplace OS into a product — an AI-led marketplace man
 
 ---
 
+## AI Tools & Access Layer (May 2026)
+
+This section defines what tools exist, what they do, and when to use each. Read this before deciding how to answer a question or take an action.
+
+### Tool Map
+
+| Tool | How to invoke | Best for | NOT for |
+|---|---|---|---|
+| `/aman` | `/aman` in Claude Code | Strategy, decisions, business context, brainstorming | Execution, data pulls, dashboard edits |
+| `/scos` | `/scos` in Claude Code | Operations, tasks, dashboard, code, data queries | High-level strategy without data |
+| **Amazon Ads MCP** | Auto-available in `/scos` Claude Code sessions | Live ad data: campaigns, keywords, ACOS, spend by ASIN — interactive, on-demand | Scheduled automation, bulk history pulls |
+| **SleepyCat Agent** | Telegram or `python run_agent.py` | Scheduled daily pulls, mobile briefings, on-the-go L1 approvals | Complex analysis, dashboard edits, code changes |
+| **SP-API scripts** | `python run_spapi.py` | Scheduled data pipeline — BR, FK, BA SQP, snapshot | Interactive queries |
+| **Ads API scripts** | `pull_ads_weekly.py`, etc. | Bulk ad history pulls, dashboard CSV injection | Live conversational queries |
+
+### When to Use Which
+
+**Use `/aman` when:**
+- Strategic decisions — channel priorities, budget philosophy, team structure
+- Preparing for Kanishk reviews or JBP
+- Evaluating a new opportunity or risk
+- Anything where business judgment > data execution
+
+**Use `/scos` when:**
+- Fixing the dashboard, editing brain files, running scripts
+- Querying sales/keyword data from existing CSVs
+- Building or debugging anything in the agent stack
+- **Asking live ad questions** (MCP kicks in automatically)
+
+**Use Amazon Ads MCP (within /scos) when:**
+- "Why did ACOS spike on [product] last week?"
+- "Which campaigns are burning budget with zero conversions?"
+- "List all SP campaigns for [product] with spend and ACOS"
+- "Compare this week vs last week for Hybrid Latex"
+- Any question that needs live ad data without a CSV upload
+
+**Use the SleepyCat Agent (Telegram) when:**
+- You're away from the laptop — mobile queries
+- Daily briefing review
+- Quick L1 approval (approve/reject a recommendation)
+- Triggering a manual data pull
+
+**Use SP-API/Ads scripts directly when:**
+- Backfilling history (>30 days)
+- Something broke in the daily automation
+- Building a new data source for the dashboard
+
+### Amazon Ads MCP — Technical Details (live May 2026)
+
+- **Endpoint:** `https://advertising-ai-eu.amazon.com/mcp` (EU = India region)
+- **Mode:** Fixed Account — profile `1306806054242557` (SleepyCat New 2024)
+- **Credentials:** Own LWA app — `ads_client_id` + `ads_refresh_token` from `config.yaml`
+- **Token:** Access token expires every 1 hour. Refresh before each Claude Code session:
+  ```powershell
+  cd C:\Users\User\Downloads\sleepycat-agent\sleepycat-agent
+  python refresh_ads_mcp_token.py
+  ```
+- **Covers:** SP, SB, SD, DSP campaigns. Last 90 days SP, 60 days SB/SD.
+- **Does NOT cover:** Account 2 campaigns (different profile — not yet configured). Snowflake SD spend inflation is a separate Airbyte bug, MCP data is clean.
+- **Config location:** `C:\Users\User\.claude.json` (added via `claude mcp add`)
+
+---
+
 ## V Group (Background Only)
 
 Aman is simultaneously building V Group — a five-arm real estate ecosystem (Vcertify, Vbrands, Vcap, Vdes, Vworkforce). Do not mix V Group work into SleepyCat operations.

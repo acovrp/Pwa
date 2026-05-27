@@ -35,7 +35,8 @@ The outcome is obvious given the data and Aman's established patterns. Do it, lo
 14. **Brain/context file updates** — update `sleepycat_brain.md` and `agent_context.md` with session learnings. Push to `acovrp/Pwa`.
 15. **Running the agent** — `python run_agent.py` from its directory. Apply known fixes (e.g. UTF-8 encoding) without asking.
 16. **update_brain command** — triggered by typing `update brain: [content]` at the agent terminal prompt. Shows proposed addition, asks y/n. On y: appends to `C:\Users\User\Downloads\pwa-push\brain\sleepycat_brain.md`, commits, and pushes to `acovrp/Pwa`. On n: logs rejection, nothing is written. Never push brain changes without approval.
-17. **SP-API daily pull** — run `python run_spapi.py` from agent folder. Pulls last 3 days of sales & traffic (upserts rows where sessions=0), pulls BA SQP, updates `data/snapshot.json`, pushes all to git. Task Scheduler registered (`SleepyCat-Daily`, 7:30 AM daily, `StartWhenAvailable=True`, `WakeToRun=True`). Sends daily Telegram morning briefing (yesterday rev/units, MTD, top 3 products, sessions drops). 3-day lookback is built-in; safe to run manually but redundant if already ran today.
+17. **SP-API daily pull** — run `python run_spapi.py` from agent folder.
+18. **Amazon Ads MCP queries** — when Aman asks a live ad question in a Claude Code session, use the `amzn-ads-mcp` MCP tools directly. Do not ask Aman to upload a CSV first. The MCP is always available in `/scos` Claude Code sessions after `refresh_ads_mcp_token.py` is run. Profile: `1306806054242557` (FIXED mode). Token expires hourly — if MCP returns auth error, run the refresh script and restart session. Pulls last 3 days of sales & traffic (upserts rows where sessions=0), pulls BA SQP, updates `data/snapshot.json`, pushes all to git. Task Scheduler registered (`SleepyCat-Daily`, 7:30 AM daily, `StartWhenAvailable=True`, `WakeToRun=True`). Sends daily Telegram morning briefing (yesterday rev/units, MTD, top 3 products, sessions drops). 3-day lookback is built-in; safe to run manually but redundant if already ran today.
 
 ### L1 — Decide + Escalate to Aman for Approval
 You form a recommendation with data backing, then ask Aman to approve/reject/modify.
@@ -88,6 +89,27 @@ Rejections: 0
 | run_agent | ✅ L0 | Start agent with `python run_agent.py`. Apply known startup fixes. |
 
 When Aman rejects an L1 decision, log the pattern. After 3 rejections of the same type, update your decision model before escalating again.
+
+---
+
+## Tool Routing — When to Use What
+
+Before taking any action, route to the right tool:
+
+| Situation | Right tool |
+|---|---|
+| Aman asks a live ad question (campaigns, ACOS, keywords, spend) | `amzn-ads-mcp` MCP — call directly, no CSV needed |
+| Aman asks about sales, sessions, units, FK orders | `query_sales` on `br_history.csv` / `fk_history.csv` |
+| Aman asks about keyword rankings or search presence | `query_keywords` on `ba_sqp.json` |
+| Dashboard needs fixing or new feature | Edit `index.html`, validate JS, push |
+| Brain/context needs updating | Edit `.md` files in `pwa-push/brain/`, push on approval |
+| Daily data is stale | Run `python run_spapi.py` |
+| Ad history CSV on dashboard is stale | Run `pull_ads_weekly.py` |
+| Ad question needs >90 days of history | Snowflake `V_ADS_ENRICHED` (note: SD +40% inflated, Account 2 missing) |
+| Aman needs a decision briefing | L1 format: Decision / Recommendation / Data / Action |
+
+**Never ask Aman to upload a CSV for ad data** — MCP provides it live.
+**Never query Snowflake for SP data** — MCP is cleaner and instant.
 
 ---
 
