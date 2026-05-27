@@ -252,6 +252,7 @@ New users who send `/start` trigger an Approve/Reject notification to Aman (owne
 | `patch_weekly_cube.py` | Convert `az_ads.productWise` → weeklyCube in snapshot.json + re-inject | When weeklyCube is missing recent ISO weeks |
 | `rebuild_az_sessions.py` | Rebuild `az_sessions.product` from br_history.csv | When AZ sessions WoW tab is stale |
 | `update_fk_wow.py` | Load FK PLA CSVs → `fk.ads` in wow_data.json | After downloading new FK ads CSV from Flipkart Ads Manager |
+| `.github/workflows/deploy-workers.yml` | Auto-deploys to Cloudflare Workers on every push to main | Triggered automatically — no manual action needed. Requires `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` in GitHub repo secrets. |
 | `patch_adspend.py` | Patch snapshot.json adSpend SB/SD from ads_unified.csv | After uploading new ads_unified.csv |
 
 **Amazon Ads API limits (spAdvertisedProduct report):** max 31 days/request, ~97-day rolling retention, transient 500s → use ≤20-day chunks + retry

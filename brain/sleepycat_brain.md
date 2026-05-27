@@ -89,7 +89,7 @@ Aman leads 5 specialist roles. The agent does not manage them directly — it pr
 Aman's single-file HTML command center, built personally and maintained by the agent.
 
 **Current version: v7.4** (ads metrics fix + snapshot system, May 8 2026)
-**Live URL (team, auth-gated): https://scos.aman-verma-741.workers.dev/** — Cloudflare Pages + Cloudflare Access, Google login required, `@sleepycat.in` domain whitelisted, external stakeholders added manually
+**Live URL (team, auth-gated): https://scos.aman-verma-741.workers.dev/** — Cloudflare Workers + Cloudflare Access, Google login, `@sleepycat.in` whitelisted. **Auto-deploys from `acovrp/Pwa` main branch via GitHub Actions** (`.github/workflows/deploy-workers.yml`). Requires repo secrets: `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`.
 **Live URL (public, no auth): https://acovrp.github.io/Pwa/** — GitHub Pages, still live
 **Local file: `C:\Users\User\Downloads\pwa-push\index.html`**
 **GitHub repo: acovrp/Pwa** (single repo for everything — dashboard, brain files, agent context, data)
@@ -100,8 +100,8 @@ Aman's single-file HTML command center, built personally and maintained by the a
 - Data via CSV uploads from Seller Central, Flipkart, Brand Analytics
 - Design system: Kanishk's S&OP light theme
 - 11 upload slots, all active: `br` (AMZ units/revenue/sessions via ASIN_MAP), `st` (keywords), `ba` (search funnel), `sp` (AMZ adspend/ACOS/TACoS via ASIN_MAP), `sb`/`sd` (total spend → `UPLOADED_TOTALS.sb/sd`), `fk` (FK units/revenue via FK_NAME_MAP title matching → `PRODUCTS.flk.units/revenue`), `fkads` (FK ad spend → `UPLOADED_TOTALS.fkads` + per-product `PRODUCTS.flk.adspend.recent` + `PRODUCTS.flk.tacos.recent`; re-renders FK KPI + tables), `inv` (stock levels → `window.INVENTORY`), `ret` (returns → `window.RETURNS`), `pp` (raw rows → `window.PURCHASE_DATA`).
-- FK tab KPI row: FK Revenue, Mar, Apr, May MTD, **FK Ad Spend** (live after fkads upload), **FK TACoS** (live after fkads upload). TACoS card goes red if >15%.
-- FK product table metric tabs: Gross Units, GMV, **Ad Spend**, **TACoS** (last two active after fkads upload).
+- FK tab KPI row: FK Revenue, Mar, Apr, May MTD, **FK Ad Spend** (live after fkads upload OR wow_data.json load), **FK TACoS** (same). TACoS card goes red if >15%.
+- FK product table metric tabs: Gross Units, GMV, **Ad Spend**, **TACoS**. Ad Spend + TACoS now auto-populate from `wow_data.json` via `populateFkAdsFromWOW()` on page load — no manual upload needed for monthly view. FK ads groups mapped: Hybrid/Original/Ultima/UltimaLatex=1:1; Pillows/Bedding/Other Mattress/Toppers split proportionally by monthly revenue.
 - Channels: Amazon, Flipkart, Quick Commerce, Other, Search Funnel tab
 
 ### ID Scheme (critical — causes bugs if confused)
@@ -144,6 +144,18 @@ Amazon SC SP report columns (after normalization): `date` (format: "Apr 23, 2026
 - **CTR = ad CTR**: `ch.ctr` for Amazon is now ad_clicks/impressions from Unified Ads. Business Report's page_views/sessions value is overwritten on Unified Ads upload.
 - **Snapshot system**: `exportSnapshot()` button in dashboard header serializes `PRODUCTS.channels` + `WEEKLY_CUBE` + `AD_SPEND` → `snapshot.json`. `SNAPSHOT_INLINE` var baked into `index.html` for synchronous load on `file://`. `applySnapshot()` runs on page load — no server needed for local file. `fetch('./data/snapshot.json')` also runs for hosted version (applies if newer than inline). Workflow: upload files → Export Snapshot → save to `data/snapshot.json` → update inline in `index.html` via PowerShell regex replace → commit both.
 - **Update inline snapshot**: `$snap = Get-Content 'data/snapshot.json' -Raw; $html = Get-Content 'index.html' -Raw; $html = [regex]::Replace($html, '(?s)var SNAPSHOT_INLINE = \{.*?\};', "var SNAPSHOT_INLINE = $snap;"); [IO.File]::WriteAllText('index.html', $html)`
+
+### FK Products in PRODUCTS array (as of May 27 2026)
+16 products have `channels.flk` data. Key lines: `hybridla`, `original`, `ultimama`, `ultimala` (Ultima Latex Mattress — added May 27, FK-only, data from Mar 2026), `trifoldm`, `latexort`, `cloudspr`, `mfpillow`, `cloudpil`, `softtouc`, `sleepyca`, `cuddlepi`, `cervical`, `memoryfo`, `protector`, `comforte`, `bedshee`.
+FK ads group → PRODUCTS mapping (used in `populateFkAdsFromWOW`):
+- "Hybrid Latex Mattress" → `hybridla`
+- "Original Mattress" → `original`
+- "Ultima Mattress" → `ultimama` + `ultimala` (split by revenue)
+- "Pillows" → `mfpillow`, `cloudpil`, `softtouc`, `sleepyca`, `cuddlepi`, `cervical`
+- "Bedding" → `comforte`, `bedshee`
+- "Other Mattress" → `trifoldm`, `latexort`, `cloudspr`
+- "Toppers & Accessories" → `memoryfo`, `protector`
+- "Switch Dual Mattress" → no PRODUCTS entry, skipped
 
 ### WoW Inline + Gran Toggle (May 2026 — this session)
 - **Month `+` expand**: each month column has expand button → expands inline to weekly sub-cols; current partial month expands to individual day columns (`RECENT_DAY_LABELS`)
