@@ -3828,10 +3828,24 @@ function wowRenderAZA() {
   var tv = WOW_DATA.az_ads.typeView;
   var pw = WOW_DATA.az_ads.productWise;
   var type = wowState.azaType;
-  var isSpSd = (type === 'SP' || type === 'SD');
-  var src = isSpSd ? pw : tv;
 
-  var weeks = Object.keys(src).sort(function(a,b){ return wowParseWeekStart(a)-wowParseWeekStart(b); });
+  // productWise is SP-only (spAdvertisedProduct API) — remap its keys to common schema
+  function pwToRow(pt) {
+    if (!pt) return null;
+    return {impressions: pt.views, clicks: pt.clicks, spend: pt.spend,
+            sales: pt.revenue, orders: pt.units, roas: pt.roas, acos: pt.acos};
+  }
+
+  // Merge weeks from both sources for 'all'; otherwise use the relevant source
+  var weeks;
+  if (type === 'SD' || type === 'SB') {
+    weeks = Object.keys(tv).sort(function(a,b){ return wowParseWeekStart(a)-wowParseWeekStart(b); });
+  } else {
+    var allWks = {};
+    Object.keys(tv).forEach(function(w){ allWks[w]=1; });
+    Object.keys(pw).forEach(function(w){ allWks[w]=1; });
+    weeks = Object.keys(allWks).sort(function(a,b){ return wowParseWeekStart(a)-wowParseWeekStart(b); });
+  }
 
   var cols = [
     {key:'impressions', label:'Impr.', fmt:'int'},
@@ -3844,8 +3858,18 @@ function wowRenderAZA() {
   ];
 
   function getRow(wk) {
-    var wkd = src[wk]; if (!wkd) return null;
-    var base = type === 'all' ? wkd.total : (wkd.types ? wkd.types[type] : null);
+    var base;
+    if (type === 'SP') {
+      // productWise = SP-only API data; use total (all products aggregated)
+      base = pw[wk] ? pwToRow(pw[wk].total) : null;
+    } else if (type === 'SD' || type === 'SB') {
+      var wkd = tv[wk]; if (!wkd) return null;
+      base = wkd.types ? wkd.types[type] : null;
+    } else {
+      // 'all': prefer typeView (has SP+SB+SD), fall back to productWise total for newer weeks
+      if (tv[wk]) { base = tv[wk].total; }
+      else if (pw[wk]) { base = pwToRow(pw[wk].total); }
+    }
     if (!base) return null;
     var r = Object.assign({}, base);
     if (r.acos != null && r.acos < 5) r.acos = r.acos * 100;
