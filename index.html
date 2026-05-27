@@ -3880,13 +3880,110 @@ function wowRenderAZA() {
 }
 
 
+function populateFkAdsFromWOW() {
+  if (!WOW_DATA || !WOW_DATA.fk || !WOW_DATA.fk.ads) return;
+  var ads = WOW_DATA.fk.ads;
+
+  function parseWeekStart(wk) {
+    var p = wk.split(' - ')[0].split('-');
+    return new Date(+p[2], +p[1]-1, +p[0]);
+  }
+  var MK = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+
+  var weeks = Object.keys(ads).sort(function(a,b){ return parseWeekStart(a)-parseWeekStart(b); })
+    .filter(function(w){ return parseWeekStart(w).getFullYear() === 2026; });
+
+  var weekSlot = {}, mCounts = {};
+  weeks.forEach(function(w) {
+    var d = parseWeekStart(w), mk = MK[d.getMonth()];
+    if (!mCounts[mk]) mCounts[mk] = 0;
+    weekSlot[w] = {mk: mk, si: mCounts[mk]++};
+  });
+
+  var GRP = {
+    'Hybrid Latex Mattress': ['hybridla'],
+    'Original Mattress':     ['original'],
+    'Ultima Mattress':       ['ultimama'],
+    'Pillows':               ['mfpillow','cloudpil','softtouc','sleepyca','cuddlepi','cervical'],
+    'Bedding':               ['comforte','bedshee'],
+    'Other Mattress':        ['trifoldm','latexort','cloudspr'],
+    'Toppers & Accessories': ['memoryfo','protector']
+  };
+
+  var byLine = {};
+  PRODUCTS.forEach(function(p){ byLine[p.line] = p; });
+
+  Object.keys(GRP).forEach(function(grp) {
+    GRP[grp].forEach(function(l) {
+      var p = byLine[l]; if (!p||!p.channels||!p.channels.flk) return;
+      if (!p.channels.flk.adspend) p.channels.flk.adspend = {};
+    });
+  });
+
+  weeks.forEach(function(wk) {
+    var wd = ads[wk]; if (!wd||!wd.products) return;
+    var s = weekSlot[wk], mk = s.mk, si = s.si;
+    Object.keys(GRP).forEach(function(grp) {
+      var gd = wd.products[grp]; if (!gd) return;
+      var lines = GRP[grp], spend = gd.spend || 0;
+      if (lines.length === 1) {
+        var p = byLine[lines[0]]; if (!p||!p.channels||!p.channels.flk) return;
+        var flk = p.channels.flk;
+        if (!flk.adspend[mk]) flk.adspend[mk] = [];
+        while (flk.adspend[mk].length <= si) flk.adspend[mk].push(null);
+        flk.adspend[mk][si] = spend;
+      } else {
+        var totRev = 0, rmap = {};
+        lines.forEach(function(l) {
+          var p2 = byLine[l]; if (!p2||!p2.channels||!p2.channels.flk) return;
+          var rev = p2.channels.flk.revenue;
+          var r = rev && rev[mk] ? rev[mk].filter(function(v){return v!=null;}).reduce(function(a,b){return a+b;},0) : 0;
+          rmap[l] = r; totRev += r;
+        });
+        lines.forEach(function(l) {
+          var p2 = byLine[l]; if (!p2||!p2.channels||!p2.channels.flk) return;
+          var flk2 = p2.channels.flk;
+          var frac = totRev > 0 ? rmap[l]/totRev : 1/lines.length;
+          if (!flk2.adspend[mk]) flk2.adspend[mk] = [];
+          while (flk2.adspend[mk].length <= si) flk2.adspend[mk].push(null);
+          flk2.adspend[mk][si] = spend * frac;
+        });
+      }
+    });
+  });
+
+  // Compute per-week tacos = adspend / revenue * 100
+  PRODUCTS.forEach(function(p) {
+    if (!p.channels||!p.channels.flk) return;
+    var flk = p.channels.flk;
+    if (!flk.adspend||!flk.revenue) return;
+    Object.keys(flk.adspend).forEach(function(mk) {
+      var sa = flk.adspend[mk], ra = flk.revenue[mk]; if (!sa||!ra) return;
+      var len = Math.max(sa.length, ra.length);
+      var ta = [];
+      for (var i = 0; i < len; i++) {
+        var sv = i<sa.length ? sa[i] : null, rv = i<ra.length ? ra[i] : null;
+        ta.push((sv!=null && rv!=null && rv>0) ? sv/rv*100 : null);
+      }
+      if (ta.every(function(v){return v===null;})) {
+        var ts = sa.filter(function(v){return v!=null;}).reduce(function(a,b){return a+b;},0);
+        var tr = ra.filter(function(v){return v!=null;}).reduce(function(a,b){return a+b;},0);
+        if (ts>0&&tr>0) { ta = new Array(len).fill(null); ta[0] = ts/tr*100; }
+      }
+      flk.tacos[mk] = ta;
+    });
+  });
+}
+
 // WoW auto-load
 (function() {
   fetch('./data/wow_data.json', {cache:'no-store'})
     .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
     .then(function(data){
       WOW_DATA = data;
+      populateFkAdsFromWOW();
       if(S.flkMetric==='wow'){var el=document.getElementById('flk-product-tbl');if(el)el.innerHTML=wowRenderFK();}
+      else if(S.flkMetric==='adspend'||S.flkMetric==='tacos'){renderTrendTable('flk-product-tbl','flk',S.flkMetric);}
       if(S.amzMetric==='azs_wow'){var el2=document.getElementById('amz-product-tbl');if(el2)el2.innerHTML=wowRenderAZS();}
       if(S.amzMetric==='aza_wow'){var el3=document.getElementById('amz-product-tbl');if(el3)el3.innerHTML=wowRenderAZA();}
       wowPopulateAzsProdSelect();
