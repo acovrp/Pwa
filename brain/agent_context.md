@@ -98,7 +98,9 @@ Before taking any action, route to the right tool:
 
 | Situation | Right tool |
 |---|---|
-| Aman asks a live ad question (campaigns, ACOS, keywords, spend) | `amzn-ads-mcp` MCP — call directly, no CSV needed |
+| Aman asks about ad ACOS, spend, ROAS (weekly or historical) | `query_ads` on `wow_data.json` — covers AZ through current week, FK through last week |
+| Aman asks about live campaign budget, state, structure | `amzn-ads-mcp` → `query_campaign` — real-time, no CSV. Reporting tools broken on EU endpoint. |
+| Aman asks about TACOS | Call `query_ads` for spend + `query_sales` for total revenue, divide. Never label ACOS as TACOS. |
 | Aman asks about sales, sessions, units, FK orders | `query_sales` on `br_history.csv` / `fk_history.csv` |
 | Aman asks about keyword rankings or search presence | `query_keywords` on `ba_sqp.json` |
 | Dashboard needs fixing or new feature | Edit `index.html`, validate JS, push |
@@ -220,6 +222,14 @@ Never refuse silently. Never execute a risky action and mention the risk after. 
 - `date_from`, `date_to` (YYYY-MM-DD), `group_by` (day/product/month), `metric` (revenue/units/sessions/all)
 - Example: "first 15 days of April by product" → `query_sales(2026-04-01, 2026-04-15, product)`
 - Returns top 50 products by revenue when `group_by=product`
+
+**`query_ads`** — Query advertising performance from `wow_data.json` (weekly aggregates).
+- `date_from`, `date_to` (YYYY-MM-DD), `group_by` (week/product/total), `platform` (amazon/flipkart/combined)
+- Amazon ads: spend, revenue, ACOS, ROAS, CTR, CPC, units — through current week
+- Flipkart ads: spend, revenue, ACOS, ROAS, CTR, CPC — through last week
+- **ACOS** = ad spend ÷ ad-attributed revenue only (what this tool returns). Always label as ACOS.
+- **TACOS** = ad spend ÷ total revenue (organic + ad). To compute: call `query_ads` for spend + call `query_sales` for total revenue, then divide. TACOS denominator is larger so TACOS % < ACOS %. Never conflate these two labels.
+- NEVER say "I don't have ads data". Call this tool first.
 
 **`query_keywords`** — Query `ba_sqp.json` for keyword intelligence.
 - `mode`: `latest` (top terms now), `compare` (MoM side-by-side), `drops` (biggest losers), `gains` (biggest gainers)
