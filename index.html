@@ -470,6 +470,18 @@ tbody tr.l3-row.open{display:table-row}
           <button class="metric-tab" onclick="setAmzMetric('ctr',this)">CTR</button>
           <button class="metric-tab" onclick="setAmzMetric('cvr',this)">CVR</button>
           <button class="metric-tab" onclick="setAmzMetric('adcvr',this)">Ad CVR</button>
+          <button class="metric-tab" onclick="setAmzMetric('azs_wow',this)" style="border-left:2px solid var(--border);margin-left:4px">Sessions WoW ▸</button>
+          <button class="metric-tab" onclick="setAmzMetric('aza_wow',this)">Ads WoW ▸</button>
+        </div>
+        <div id="amz-wow-ctrl" style="display:none;gap:6px;align-items:center">
+          <select id="wow-azs-prod" onchange="wowState.azsProd=this.value;if(S.amzMetric==='azs_wow'){var el=document.getElementById('amz-product-tbl');if(el&&WOW_DATA)el.innerHTML=wowRenderAZS();}" style="padding:5px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px">
+            <option value="all">All Products</option>
+          </select>
+          <select id="wow-aza-type" onchange="wowState.azaType=this.value;if(S.amzMetric==='aza_wow'){var el=document.getElementById('amz-product-tbl');if(el&&WOW_DATA)el.innerHTML=wowRenderAZA();}" style="padding:5px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px">
+            <option value="all">All Types</option>
+            <option value="SP">SP</option>
+            <option value="SD">SD</option>
+          </select>
         </div>
       </div>
     </div>
@@ -1467,7 +1479,7 @@ function renderFunnel(type) {
     var prev = i>0 ? f[keys[i-1]] : 100;
     var curr = f[keys[i]];
     var drop = (i>0 && prev>0) ? ((prev-curr)/prev*100).toFixed(1) : null;
-    var wow = f.prev ? ((curr-f.prev[keys[i]])/Math.abs(f.prev[keys[i]]||1)*100).toFixed(1) : null;
+    var wow = (f.prev && f.prev[keys[i]] != null) ? ((curr-f.prev[keys[i]])/Math.abs(f.prev[keys[i]]||1)*100).toFixed(1) : null;
     var dropColor = drop&&parseFloat(drop)>35?'#dc3545':drop&&parseFloat(drop)>20?'#f59e0b':'#6c757d';
     var wowColor = wow ? (parseFloat(wow)>0?'#28a745':'#dc3545') : '';
     html += '<div class="funnel-stage">';
@@ -2004,7 +2016,20 @@ function setAmzMetric(v,btn){
   S.amzMetric=v;
   document.querySelectorAll('#amz-metric-tabs .metric-tab').forEach(function(b){b.classList.remove('active')});
   btn.classList.add('active');
-  renderTrendTable('amz-product-tbl','amz',v==='organic'?'organic_pct':v);
+  var azWowCtrl=document.getElementById('amz-wow-ctrl');
+  if(azWowCtrl) azWowCtrl.style.display=(v==='azs_wow'||v==='aza_wow')?'flex':'none';
+  var md=document.getElementById('amz-mode-desc');
+  var el=document.getElementById('amz-product-tbl');
+  if(v==='azs_wow'){
+    if(md) md.textContent='Amazon Sessions WoW — SC Sessions, Orders, CVR, Organic% by product';
+    if(el) el.innerHTML=WOW_DATA?wowRenderAZS():'<div style="padding:30px;text-align:center;color:var(--text-secondary);font-size:12px">WoW data loading…</div>';
+  } else if(v==='aza_wow'){
+    if(md) md.textContent='Amazon Ads WoW — Impressions, Spend, ACOS, ROAS by product';
+    if(el) el.innerHTML=WOW_DATA?wowRenderAZA():'<div style="padding:30px;text-align:center;color:var(--text-secondary);font-size:12px">WoW data loading…</div>';
+  } else {
+    if(md) md.textContent='Monthly totals · Jan–May';
+    renderTrendTable('amz-product-tbl','amz',v==='organic'?'organic_pct':v);
+  }
 }
 
 function setUnifiedGroup(v,btn){
@@ -3838,6 +3863,11 @@ function wowRenderAZA() {
     .then(function(data){
       WOW_DATA = data;
       if(S.flkMetric==='wow'){var el=document.getElementById('flk-product-tbl');if(el)el.innerHTML=wowRenderFK();}
+      if(S.amzMetric==='azs_wow'){var el2=document.getElementById('amz-product-tbl');if(el2)el2.innerHTML=wowRenderAZS();}
+      if(S.amzMetric==='aza_wow'){var el3=document.getElementById('amz-product-tbl');if(el3)el3.innerHTML=wowRenderAZA();}
+      wowPopulateAzsProdSelect();
+      renderFlkKpi();
+      renderOvKpi();
       console.log('[WoW] Loaded — FK '+Object.keys(data.fk.ads||{}).length+'w AZ '+Object.keys(data.az_ads.typeView||{}).length+'w');
     })
     .catch(function(e){ console.warn('[WoW] wow_data.json not found:', e.message); });
