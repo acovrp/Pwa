@@ -1140,12 +1140,14 @@ var AD_SPEND = {"jan":{"sp":5734192.368273325,"sb":0,"sd":0,"total":5734192.3682
 
 function getAmzRevByMo(mo,prods){
   return (prods||PRODUCTS).reduce(function(s,p){
+    if(!p.channels.amz||!p.channels.amz.revenue)return s;
     var v=p.channels.amz.revenue[mo]||[0,0,0,0];
     return s+v.reduce(function(a,b){return a+(b||0);},0);
   },0);
 }
 function getAmzRevRecent(wIdx,prods){
   return (prods||PRODUCTS).reduce(function(s,p){
+    if(!p.channels.amz||!p.channels.amz.revenue)return s;
     var v=p.channels.amz.revenue.recent||[0,0,0,0]; return s+(v[wIdx]||0);
   },0);
 }
@@ -1182,7 +1184,7 @@ function getAllSpendByMo(mo, prods) {
 
 function getAmzSpendByMo(mo,prods){
   return (prods||PRODUCTS).reduce(function(s,p){
-    if(!p.channels.amz.adspend) return s;
+    if(!p.channels.amz||!p.channels.amz.adspend) return s;
     var v=p.channels.amz.adspend[mo]||[0,0,0,0];
     return s+v.reduce(function(a,b){return a+(b||0);},0);
   },0);
