@@ -187,6 +187,7 @@ FK ads group → PRODUCTS mapping (used in `populateFkAdsFromWOW`):
 - Rate metrics (ACOS, CTR, CVR, TACoS) never summed across products
 - Read column headers from actual file before writing any parser — never assume
 - **Dropdown `value` must match `PRODUCTS[].line`, not `p.id` or the display name.**
+- **FK-only products** (e.g. `ultimala`) must have `channels: { flk: {...} }` with NO `channels.amz` key. If `channels.amz` is missing/undefined and the snapshot has `sc.amz`, `applySnapshot` will throw `Object.assign(undefined, ...)` — crashing all subsequent script execution on page load (wow_data.json fetch, snapshot.json fetch, toggleTheme all stop). Guard is now in `applySnapshot` (`if (sc.amz && p.channels.amz)`), but do not add a dummy `amz: {}` to FK-only products.
 - **Deploy flow**: edit `C:\Users\User\Downloads\pwa-push\index.html` → commit → push to `origin main` on `acovrp/Pwa`. GitHub Pages serves from `main`.
 
 ---
