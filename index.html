@@ -2184,8 +2184,8 @@ function applySnapshot(snap) {
   Object.keys(snap.channels || {}).forEach(function(pid) {
     var p = PRODUCTS.find(function(x){return x.id===pid;}); if (!p) return;
     var sc = snap.channels[pid];
-    if (sc.amz) Object.assign(p.channels.amz, sc.amz);
-    if (sc.flk) Object.assign(p.channels.flk, sc.flk);
+    if (sc.amz && p.channels.amz) Object.assign(p.channels.amz, sc.amz);
+    if (sc.flk && p.channels.flk) Object.assign(p.channels.flk, sc.flk);
     if (sc.qcom && p.channels.qcom) Object.assign(p.channels.qcom, sc.qcom);
   });
   if (snap.weeklyCube && Object.keys(snap.weeklyCube).length) {
