@@ -438,7 +438,7 @@ This section defines what tools exist, what they do, and when to use each. Read 
 - **Endpoint:** `https://advertising-ai-eu.amazon.com/mcp` (EU = India region)
 - **Mode:** Fixed Account — profile `1306806054242557` (SleepyCat New 2024)
 - **Credentials:** Own LWA app — `ads_client_id` + `ads_refresh_token` from `config.yaml`
-- **Token:** Access token expires every 1 hour. Refresh before each Claude Code session:
+- **Token:** Access token expires every 1 hour. **Auto-refreshes via Stop hook** (added 2026-06-01) — token is refreshed at end of each Claude Code session, next session always starts connected. If auth error mid-session, run manually:
   ```powershell
   cd C:\Users\User\Downloads\sleepycat-agent\sleepycat-agent
   python refresh_ads_mcp_token.py
